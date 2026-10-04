@@ -4,16 +4,17 @@ pub fn add_test_steps(b: *std.Build, zigmkay_module: *std.Build.Module, test_ste
     const target = b.standardTargetOptions(.{});
 
     // START: Create test file iterator
-    var src_dir = b.build_root.handle.openDir(test_dir, .{ .iterate = true }) catch |err|
+    var src_dir = b.root.openDir(b.graph.io, test_dir, .{ .iterate = true }) catch |err|
         std.debug.panic("Failed to open '{s}': {}", .{ test_dir, err });
-    defer src_dir.close();
+    defer src_dir.close(b.graph.io);
 
+    b.dependOnDirectoryContents(b.path(test_dir));
     var walker = src_dir.walk(b.allocator) catch |err|
         std.debug.panic("Failed to walk '{s}': {}", .{ test_dir, err });
     defer walker.deinit();
     // END: Create test file iterator
 
-    while (walker.next() catch |err| std.debug.panic("Failed to iterate '{s}': {}", .{ test_dir, err })) |entry| {
+    while (walker.next(b.graph.io) catch |err| std.debug.panic("Failed to iterate '{s}': {}", .{ test_dir, err })) |entry| {
         if (entry.kind == .file and std.mem.indexOf(u8, entry.basename, "test_") != null) {
             const current_test_file_path = std.fmt.allocPrint(b.allocator, "{s}/{s}", .{ test_dir, entry.path }) catch unreachable;
 

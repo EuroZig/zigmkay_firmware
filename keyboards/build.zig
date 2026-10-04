@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const microzig = @import("microzig");
-const flash = @import("zig_flash");
 const MicroBuild = microzig.MicroBuild(.{
     .rp2xxx = true,
 });
@@ -26,15 +25,11 @@ const keyboard_samples = [_]KeyboardSample{
 pub fn build(b: *std.Build) void {
     const selected_keyboard = b.option([]const u8, "keyboard", keyboardOptionDescription(b)) orelse keyboard_samples[0].name;
 
-    if (shouldPrintSamplesForListSteps(b)) {
-        printAvailableSamples();
-    }
-
     const mz_dep = b.dependency("microzig", .{});
     const mb = MicroBuild.init(b, mz_dep) orelse return;
 
-    const target = mb.ports.rp2xxx.boards.raspberrypi.pico.*; //  b.standardTargetOptions(.{});
-    const optimize: std.builtin.OptimizeMode = .ReleaseSafe; //b.standardOptimizeOption(.{});
+    const target = mb.ports.rp2xxx.boards.raspberrypi.pico.*;
+    const optimize: std.builtin.OptimizeMode = .ReleaseSafe;
 
     const zigmkay_dep = b.dependency("zigmkay", .{});
     const zigmkay_mod = zigmkay_dep.module("zigmkay");
@@ -58,10 +53,10 @@ pub fn build(b: *std.Build) void {
     firmware.add_app_import("zkeycodes", zkeycodes_mod, .{ .depend_on_microzig = true });
     mb.install_firmware(firmware, .{});
 
-    const flash_dep = b.dependency("zig_flash", .{});
-    const flash_exe = flash_dep.artifact("zig_flash");
-
-    _ = flash.addFlashStep(b, flash_exe, .{ .input_name = "zigmkay_firmware.uf2" });
+    const flash_step = b.step("flash", "Build and flash the firmware");
+    const flash_command = b.addSystemCommand(&.{ "sh", "-c", "while [ ! -d /Volumes/RPI-RP2 ]; do sleep 0.2; done; cp \"$1\" /Volumes/RPI-RP2/firmware.uf2", "sh" });
+    flash_command.addFileArg(firmware.get_emitted_bin(.{ .uf2 = .{} }));
+    flash_step.dependOn(&flash_command.step);
 }
 
 fn keyboardOptionDescription(b: *std.Build) []const u8 {
@@ -92,17 +87,4 @@ fn printAvailableSamples() void {
     }
     std.debug.print("zig build -Dkeyboard=<name>\t\tBuild the Firmware\n", .{});
     std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash the Firmware \n\n", .{});
-}
-
-fn shouldPrintSamplesForListSteps(b: *std.Build) bool {
-    const args = std.process.argsAlloc(b.allocator) catch return false;
-    defer std.process.argsFree(b.allocator, args);
-
-    for (args) |arg| {
-        if (std.mem.eql(u8, arg, "-l") or std.mem.eql(u8, arg, "--list-steps")) {
-            return true;
-        }
-    }
-
-    return false;
 }
