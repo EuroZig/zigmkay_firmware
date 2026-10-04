@@ -87,7 +87,7 @@ pub fn build(b: *std.Build) void {
     flash_mount_step.dependOn(&flash_command.step);
 
     const flash_pt_step = b.step("flash_pt", "Build and flash the firmware with picotool");
-    const flash_pt_command = addPicotoolFlashCommand(b, firmware_uf2);
+    const flash_pt_command = @import("zigmkay").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
     flash_pt_step.dependOn(&flash_pt_command.step);
 
     const flash_step = b.step("flash", "Build and flash the firmware using the host default");
@@ -125,23 +125,6 @@ fn addKeyboardFirmware(
     firmware.add_app_import("zigmkay", zigmkay_mod, .{ .depend_on_microzig = true });
     firmware.add_app_import("zkeycodes", zkeycodes_mod, .{ .depend_on_microzig = true });
     return firmware;
-}
-
-/// Compiles the firmware first, then runs one uncached host tool which reports
-/// the exact UF2 hash, waits for BOOTSEL, loads and verifies it, and reboots.
-pub fn addPicotoolFlashCommand(b: *std.Build, firmware_uf2: std.Build.LazyPath) *std.Build.Step.Run {
-    const picotool_flash = b.addExecutable(.{
-        .name = "picotool_flash",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("../tools/picotool_flash.zig"),
-            .target = b.graph.host,
-            .optimize = .ReleaseSafe,
-        }),
-    });
-    const flash_command = b.addRunArtifact(picotool_flash);
-    flash_command.addFileArg(firmware_uf2);
-    flash_command.has_side_effects = true;
-    return flash_command;
 }
 
 fn keyboardOptionDescription(b: *std.Build) []const u8 {

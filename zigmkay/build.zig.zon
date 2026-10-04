@@ -15,5 +15,6 @@
         "src",
         "build_utils.zig",
         "tests",
+        "tools",
     },
 }
