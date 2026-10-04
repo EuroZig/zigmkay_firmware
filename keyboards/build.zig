@@ -54,8 +54,10 @@ pub fn build(b: *std.Build) void {
     mb.install_firmware(firmware, .{});
 
     const flash_step = b.step("flash", "Build and flash the firmware");
-    const flash_command = b.addSystemCommand(&.{ "sh", "-c", "while [ ! -d /Volumes/RPI-RP2 ]; do sleep 0.2; done; cp \"$1\" /Volumes/RPI-RP2/firmware.uf2", "sh" });
+    const flash_command = b.addSystemCommand(&.{ "sh", "-c", "until diskutil info \"$2\" >/dev/null 2>&1; do sleep 0.2; done; sleep 0.5; cp \"$1\" \"$2/firmware.uf2\" && sync", "sh" });
     flash_command.addFileArg(firmware.get_emitted_bin(.{ .uf2 = .{} }));
+    flash_command.addArg(b.option([]const u8, "flash-mount", "Mounted RP2 bootloader volume") orelse "/Volumes/RPI-RP2");
+    flash_command.has_side_effects = true;
     flash_step.dependOn(&flash_command.step);
 }
 
