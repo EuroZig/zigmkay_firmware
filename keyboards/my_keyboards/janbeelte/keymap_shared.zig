@@ -81,12 +81,21 @@ fn _GCS(fire: core.KeyCodeFire) core.KeyCodeFire {
     return copy;
 }
 
-/// Tap sends `keycode_fire`; hold sends Gui+`keycode_hold`.
+/// Tap sends `keycode_fire`; hold sends Gui+`keycode_hold` (macOS shortcuts).
 pub fn GuiH(keycode_fire: core.KeyCodeFire, keycode_hold: core.KeyCodeFire) core.KeyDef {
+    return ModH(.{ .left_gui = true }, keycode_fire, keycode_hold);
+}
+
+/// Tap sends `keycode_fire`; hold sends Ctrl+`keycode_hold` (Windows/Linux shortcuts).
+pub fn CtlH(keycode_fire: core.KeyCodeFire, keycode_hold: core.KeyCodeFire) core.KeyDef {
+    return ModH(.{ .left_ctrl = true }, keycode_fire, keycode_hold);
+}
+
+fn ModH(modifiers: core.Modifiers, keycode_fire: core.KeyCodeFire, keycode_hold: core.KeyCodeFire) core.KeyDef {
     return core.KeyDef{
         .tap_hold = .{
             .tap = .{ .key_press = keycode_fire },
-            .hold = core.HoldDef{ .hold_modifiers = .{ .left_gui = true }, .custom = keycode_hold.tap_keycode },
+            .hold = core.HoldDef{ .hold_modifiers = modifiers, .custom = keycode_hold.tap_keycode },
             .tapping_term = tapping_term,
         },
     };

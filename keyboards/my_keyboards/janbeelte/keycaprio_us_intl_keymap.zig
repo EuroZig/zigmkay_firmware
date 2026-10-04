@@ -1,4 +1,6 @@
-// Keycaprio keymap with a US QWERTY base layer.
+// Keycaprio keymap with a US QWERTY base layer for Windows/Linux with the
+// US-International OS layout. Compared to the macOS keymaps, Ctrl and Gui are
+// swapped: home row index fingers hold Ctrl, shortcuts use Ctrl instead of Cmd.
 const std = @import("std");
 
 const zigmkay = @import("zigmkay");
@@ -15,11 +17,14 @@ const WinNav = zigmkay.macros.WinNav;
 const shared = @import("keymap_shared.zig");
 const H_ = shared.H_;
 const B_ = shared.B_;
-const GuiH = shared.GuiH;
-const UNDO = shared.UNDO;
-const REDO = shared.REDO;
-const SCRNSHT = shared.SCRNSHT;
-const DQUO = shared.DQUO;
+const CtlH = shared.CtlH;
+const UNDO = kcm.L_CTL(us.Z);
+const REDO = kcm.L_CTL(us.Y);
+const SCRNSHT = kc.PSCR;
+// US-International: " is a dead key, us.DIAE taps a space after it to print ".
+const DQUO = us.DIAE;
+// Raw dead diaeresis: the next vowel becomes an umlaut (" + a = ä).
+const DEAD_DIAE = kcm.L_SFT(kc.QUOT);
 const combo = shared.combo;
 const quote_combo = shared.quote_combo;
 
@@ -44,22 +49,22 @@ pub const keymap = [_][key_count]?core.KeyDef{
     // L_BASE
     .{
         T(us.Q),       T(us.W),            T(us.E),            H_.S(us.R),       T(us.T),                   T(us.Y),                T(us.U),       T(us.I),       T(us.O),              T(us.P),
-        H_.S(us.A),    H_.C(us.S),         H_.A(us.D),         H_.G(us.F),       GuiH(us.G, us.T),          T(us.H),                H_.G(us.J),    H_.A(us.K),    H_.C(us.L),           H_.S(us.SCLN),
-        T(us.Z),       GuiH(us.X, us.X),   GuiH(us.C, us.C),   GuiH(us.V, us.V), T(us.B),                   T(us.N),                T(us.M),       T(us.COMM),    B_.LT(L_WIN, us.DOT), T(us.SLSH),
+        H_.S(us.A),    H_.G(us.S),         H_.A(us.D),         H_.C(us.F),       CtlH(us.G, us.T),          T(us.H),                H_.C(us.J),    H_.A(us.K),    H_.G(us.L),           H_.S(us.SCLN),
+        T(us.Z),       CtlH(us.X, us.X),   CtlH(us.C, us.C),   CtlH(us.V, us.V), T(us.B),                   T(us.N),                T(us.M),       T(us.COMM),    B_.LT(L_WIN, us.DOT), T(us.SLSH),
                                                                T(kc.ENT),        B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.ENT), T(kc.ENT),
     },
     // L_ARROWS - WIP (SEMICOLON & PLUS & TILD up for debate)
     .{
-        H_.G(us.LBRC), T(us.RBRC),         T(us.LCBR),         H_.S(us.RCBR),    T(us.HASH),                T(us.AT),               T(kc.HOME),    AF(kc.UP),     T(kc.END),            T(us.PLUS),
-        H_.S(us.LABK), H_.C(us.RABK),      H_.A(us.LPRN),      H_.G(us.RPRN),    T(us.SLSH),                T(kc.PGUP),             AF(kc.LEFT),   AF(kc.DOWN),   AF(kc.RIGHT),         H_.S(kc.PGDN),
-        _______,       T(us.DTIL),         T(us.AMPR),         T(us.ASTR),       T(kc.BSLS),                T(us.DLR),              H_.G(us.SCLN), H_.A(us.ACUT), H_.C(us.DGRV),        _______,
+        H_.C(us.LBRC), T(us.RBRC),         T(us.LCBR),         H_.S(us.RCBR),    T(us.HASH),                T(us.AT),               T(kc.HOME),    AF(kc.UP),     T(kc.END),            T(us.PLUS),
+        H_.S(us.LABK), H_.G(us.RABK),      H_.A(us.LPRN),      H_.C(us.RPRN),    T(us.SLSH),                T(kc.PGUP),             AF(kc.LEFT),   AF(kc.DOWN),   AF(kc.RIGHT),         H_.S(kc.PGDN),
+        _______,       T(us.DTIL),         T(us.AMPR),         T(us.ASTR),       T(kc.BSLS),                T(us.DLR),              H_.C(us.SCLN), H_.A(us.ACUT), H_.G(us.DGRV),        _______,
                                                                T(kc.ENT),        B_.LT(L_LEFT, kc.ENT),     _______,                T(kc.ENT),
     },
     // L_NUM
     .{
-        H_.G(kc.ESC),  T(SCRNSHT),         T(us.PERC),         H_.S(us.DCIR),    T(us.DGRV),                T(us.UNDS),             T(us.N7),      T(us.N8),      T(us.N9),             T(us.EQL),
-        AF(kc.BSPC),   H_.C(UNDO),         H_.A(REDO),         H_.G(kc.ENT),     T(kc.TAB),                 T(us.MINS),             H_.G(us.N4),   H_.A(us.N5),   H_.C(us.N6),          H_.S(us.PLUS),
-        _______,       T(kcm.L_GUI(us.X)), T(kcm.L_GUI(us.C)), T(kc.DEL),        T(kcm.L_GUI(us.V)),        T(us.EURO),             T(us.N1),      T(us.N2),      T(us.N3),             _______,
+        H_.C(kc.ESC),  T(SCRNSHT),         T(us.PERC),         H_.S(us.DCIR),    T(us.DGRV),                T(us.UNDS),             T(us.N7),      T(us.N8),      T(us.N9),             T(us.EQL),
+        AF(kc.BSPC),   H_.G(UNDO),         H_.A(REDO),         H_.C(kc.ENT),     T(kc.TAB),                 T(us.MINS),             H_.C(us.N4),   H_.A(us.N5),   H_.G(us.N6),          H_.S(us.PLUS),
+        _______,       T(kcm.L_CTL(us.X)), T(kcm.L_CTL(us.C)), T(kc.DEL),        T(kcm.L_CTL(us.V)),        T(us.EURO),             T(us.N1),      T(us.N2),      T(us.N3),             _______,
                                                                T(kc.ENT),        _______,                   B_.LT(L_RIGHT, us.N0),  T(kc.ENT),
     },
     // L_EMPTY
@@ -71,8 +76,8 @@ pub const keymap = [_][key_count]?core.KeyDef{
     },
     // L_BOTH - WIP (BACKSPC & ESC & TAB & GRAVE & CART up for debate, do we want SCRNSHT without shift?)
     .{
-        H_.G(kc.ESC),  T(kc.F7),           T(kc.F8),           H_.S(kc.F9),      T(kc.F10),                 T(kcm.L_GUI(us.DGRV)),  H_.S(kc.SPC),  T(kc.SPC),     T(kc.SPC),            T(kc.TAB),
-        AF(kc.BSPC),   H_.C(kc.F4),        H_.A(kc.F5),        H_.G(kc.F6),      T(kc.F11),                 T(us.SS),               H_.G(kc.BSPC), H_.A(kc.BSPC), H_.C(kc.BSPC),        H_.S(kc.ESC),
+        H_.C(kc.ESC),  T(kc.F7),           T(kc.F8),           H_.S(kc.F9),      T(kc.F10),                 T(kcm.L_ALT(kc.TAB)),   H_.S(kc.SPC),  T(kc.SPC),     T(kc.SPC),            T(kc.TAB),
+        AF(kc.BSPC),   H_.G(kc.F4),        H_.A(kc.F5),        H_.C(kc.F6),      T(kc.F11),                 T(us.SS),               H_.C(kc.BSPC), H_.A(kc.BSPC), H_.G(kc.BSPC),        H_.S(kc.ESC),
         _______,       T(kc.F1),           T(kc.F2),           T(kc.F3),         T(kc.F12),                 T(us.DCIR),             T(kc.DEL),     T(kc.DEL),     T(kc.DEL),            _______,
                                                                T(kc.ENT),        _______,                   _______,                T(kc.ENT),
     },
@@ -100,8 +105,8 @@ pub const combos = [_]core.Combo2Def{
     combo.Combo_Tap_HoldMod(.{ 1, 2 }, L_BASE, us.Z, .{ .right_ctrl = true }),
 
     // Dots for DE Umlaute:
-    combo.Combo_Tap(.{ 23, 24 }, L_BASE, kcm.L_ALT(us.U)),
-    combo.Combo_Tap(.{ 25, 26 }, L_BASE, kcm.L_ALT(us.U)),
+    combo.Combo_Tap(.{ 23, 24 }, L_BASE, DEAD_DIAE),
+    combo.Combo_Tap(.{ 25, 26 }, L_BASE, DEAD_DIAE),
 
     // combo.Combo_Tap_HoldMod(.{ 12, 13 }, L_BASE, us.V, .{ .left_ctrl = true, .left_shift = true }),
     // combo.Combo_Tap_HoldMod(.{ 12, 13 }, L_NUM, _Ctl(us.V), .{ .left_ctrl = true, .left_shift = true }),
