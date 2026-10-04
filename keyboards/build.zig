@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const microzig = @import("microzig");
 const MicroBuild = microzig.MicroBuild(.{
@@ -12,6 +13,7 @@ const KeyboardSample = struct {
 
 const keyboard_samples = [_]KeyboardSample{
     .{ .name = "clacky_chan", .root_source_file = "my_keyboards/rollercole/clacky_chan.zig" },
+    .{ .name = "clackychan_colemak", .root_source_file = "my_keyboards/janbeelte/clackychan_colemak/main.zig" },
     .{ .name = "lk1", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_1.zig" },
     .{ .name = "lk2", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_2.zig" },
     .{ .name = "lk6", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_6.zig" },
@@ -53,12 +55,40 @@ pub fn build(b: *std.Build) void {
     firmware.add_app_import("zkeycodes", zkeycodes_mod, .{ .depend_on_microzig = true });
     mb.install_firmware(firmware, .{});
 
-    const flash_step = b.step("flash", "Build and flash the firmware");
+    const firmware_uf2 = firmware.get_emitted_bin(.{ .uf2 = .{} });
+    b.addNamedLazyPath("firmware_uf2", firmware_uf2);
+
+    const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through a mounted RP2 bootloader volume");
     const flash_command = b.addSystemCommand(&.{ "sh", "-c", "until diskutil info \"$2\" >/dev/null 2>&1; do sleep 0.2; done; sleep 0.5; cp \"$1\" \"$2/firmware.uf2\" && sync", "sh" });
-    flash_command.addFileArg(firmware.get_emitted_bin(.{ .uf2 = .{} }));
+    flash_command.addFileArg(firmware_uf2);
     flash_command.addArg(b.option([]const u8, "flash-mount", "Mounted RP2 bootloader volume") orelse "/Volumes/RPI-RP2");
     flash_command.has_side_effects = true;
-    flash_step.dependOn(&flash_command.step);
+    flash_mount_step.dependOn(&flash_command.step);
+
+    const flash_pt_step = b.step("flash_pt", "Build and flash the firmware with picotool");
+    const flash_pt_command = addPicotoolFlashCommand(b, firmware_uf2);
+    flash_pt_step.dependOn(&flash_pt_command.step);
+
+    const flash_step = b.step("flash", "Build and flash the firmware using the host default");
+    if (builtin.os.tag == .macos) {
+        flash_step.dependOn(&flash_pt_command.step);
+    } else {
+        flash_step.dependOn(&flash_command.step);
+    }
+}
+
+/// Creates `picotool` commands that load and verify a UF2 image, then reboot
+/// the device into application mode. The returned reboot command depends on
+/// the load command, so downstream steps only need to depend on the result.
+pub fn addPicotoolFlashCommand(b: *std.Build, firmware_uf2: std.Build.LazyPath) *std.Build.Step.Run {
+    const load_command = b.addSystemCommand(&.{ "picotool", "load", "--force-no-reboot", "--verify" });
+    load_command.addFileArg(firmware_uf2);
+    load_command.has_side_effects = true;
+
+    const reboot_command = b.addSystemCommand(&.{ "picotool", "reboot", "--application" });
+    reboot_command.has_side_effects = true;
+    reboot_command.step.dependOn(&load_command.step);
+    return reboot_command;
 }
 
 fn keyboardOptionDescription(b: *std.Build) []const u8 {
@@ -70,7 +100,7 @@ fn keyboardOptionDescription(b: *std.Build) []const u8 {
     const joined_samples = std.mem.join(b.allocator, ", ", sample_names[0..]) catch @panic("Failed to build keyboard sample list");
     return std.fmt.allocPrint(
         b.allocator,
-        "Keyboard sample to build/flash (use: zig build -Dkeyboard=<name>, flash: zig build flash -Dkeyboard=<name>, available: {s})",
+        "Keyboard sample to build/flash (use: zig build -Dkeyboard=<name>, flash: zig build flash -Dkeyboard=<name>, picotool: zig build flash_pt -Dkeyboard=<name>, available: {s})",
         .{joined_samples},
     ) catch @panic("Failed to build keyboard option description");
 }
@@ -88,5 +118,6 @@ fn printAvailableSamples() void {
         std.debug.print("  - {s}\n", .{sample.name});
     }
     std.debug.print("zig build -Dkeyboard=<name>\t\tBuild the Firmware\n", .{});
-    std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash the Firmware \n\n", .{});
+    std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash using the host default\n", .{});
+    std.debug.print("zig build flash_pt -Dkeyboard=<name>\tBuild & Flash with picotool\n\n", .{});
 }
