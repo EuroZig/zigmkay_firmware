@@ -77,13 +77,26 @@ pub fn build(b: *std.Build) void {
     }
 }
 
-/// Creates `picotool` commands that load and verify a UF2 image, then reboot
-/// the device into application mode. The returned reboot command depends on
-/// the load command, so downstream steps only need to depend on the result.
+/// Waits for a BOOTSEL device, loads and verifies a UF2 image, then reboots the
+/// device into application mode. The returned reboot command depends on the
+/// whole sequence, so downstream steps only need to depend on the result.
 pub fn addPicotoolFlashCommand(b: *std.Build, firmware_uf2: std.Build.LazyPath) *std.Build.Step.Run {
+    const wait_for_pico = b.addExecutable(.{
+        .name = "wait_for_pico",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("../tools/wait_for_pico.zig"),
+            .target = b.graph.host,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+    const wait_command = b.addRunArtifact(wait_for_pico);
+    wait_command.has_side_effects = true;
+    firmware_uf2.addStepDependencies(&wait_command.step);
+
     const load_command = b.addSystemCommand(&.{ "picotool", "load", "--force-no-reboot", "--verify" });
     load_command.addFileArg(firmware_uf2);
     load_command.has_side_effects = true;
+    load_command.step.dependOn(&wait_command.step);
 
     const reboot_command = b.addSystemCommand(&.{ "picotool", "reboot", "--application" });
     reboot_command.has_side_effects = true;

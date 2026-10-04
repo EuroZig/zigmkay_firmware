@@ -14,6 +14,7 @@ const MED = macros.MED;
 const MO = macros.MO;
 const MS = macros.MS;
 const SIG = macros.SIG;
+const WinNav = macros.WinNav;
 pub const COM_TOG = core.CUSTOM_ID_COMPANION_TOGGLE;
 pub const COM_OFF = core.CUSTOM_ID_COMPANION_SHUTDOWN;
 pub const COM_LOG = core.CUSTOM_ID_COMPANION_LOG_TOGGLE;
@@ -26,7 +27,9 @@ const B_ = macros.OptionsBasicKeydef{ .tapping_term = tapping_term };
 const L_BASE: usize = 0;
 const L_ARROWS: usize = 1;
 const L_NUM: usize = 2;
+const L_EMPTY: usize = 3;
 const L_BOTH: usize = 4;
+const L_WIN: usize = 5;
 const L_LEFT = L_NUM;
 const L_RIGHT = L_ARROWS;
 
@@ -43,7 +46,7 @@ pub const keymap = [_][key_count]?core.KeyDef{
     .{
          T(us.Q),  T(us.W), T(us.F),   H_.S(us.P), T(us.B),                  T(us.J),   T(us.L),  T(us.U),       T(us.Y), T(us.SCLN),
          H_.S(us.A), H_.C(us.R), H_.A(us.S), H_.G(us.T), GuiH(us.G, us.T),                  T(us.M), H_.G(us.N),   H_.A(us.E),     H_.C(us.I),    H_.S(us.O),
-                    GuiH(us.X, us.X),   GuiH(us.C, us.C),         T(us.D), GuiH(us.V, us.V),                  T(us.K),  T(us.H), T(us.COMM), T(us.DOT),
+                    GuiH(us.X, us.X),   GuiH(us.C, us.C),         T(us.D), GuiH(us.V, us.V),                  T(us.K),  T(us.H), T(us.COMM), B_.LT(L_WIN, us.DOT),
                                              B_.LT(L_LEFT, kc.SPC),                  B_.LT(L_RIGHT, kc.ENT)
     },
     // L_ARROWS - WIP (SEMICOLON & PLUS & TILD up for debate)
@@ -55,8 +58,8 @@ pub const keymap = [_][key_count]?core.KeyDef{
     },
     // L_NUM
     .{
-       H_.G(kc.ESC), T(SCRNSHT) ,    T(us.PERC),  H_.S(us.DCIR), T(us.DGRV),                  T(us.MINS),   T(us.N7),  T(us.N8),  T(us.N9),    T(us.PLUS),
-       AF(kc.BSPC), H_.C(UNDO), H_.A(REDO) , H_.G(kc.ENT), T(kc.TAB),                T(us.UNDS), H_.G(us.N4), H_.A(us.N5),H_.C(us.N6), H_.S(us.EQL),
+       H_.G(kc.ESC), T(SCRNSHT) ,    T(us.PERC),  H_.S(us.DCIR), T(us.DGRV),                  T(us.UNDS),   T(us.N7),  T(us.N8),  T(us.N9),    T(us.EQL),
+       AF(kc.BSPC), H_.C(UNDO), H_.A(REDO) , H_.G(kc.ENT), T(kc.TAB),                T(us.MINS), H_.G(us.N4), H_.A(us.N5),H_.C(us.N6), H_.S(us.PLUS),
                T(kcm.L_GUI(us.X)), T(kcm.L_GUI(us.C)),   T(kc.DEL), T(kcm.L_GUI(us.V)),              T(us.EURO),   T(us.N1),  T(us.N2),  T(us.N3),
                                         _______,                                                       B_.LT(L_RIGHT, us.N0)
     },
@@ -75,6 +78,13 @@ pub const keymap = [_][key_count]?core.KeyDef{
                       T(kc.F1),   T(kc.F2),   T(kc.F3), T(kc.F12),            T(us.DCIR),   T(kc.DEL),   T(kc.DEL),   T(kc.DEL),
                                                    _______,              _______
     },
+    // Window navigation shortcuts, activated by holding the base-layer dot key.
+    .{
+        WinNav(us.N7), _______, WinNav(us.N1), WinNav(us.N6), _______,             _______, _______, _______, _______, _______,
+        WinNav(us.N4), _______, WinNav(us.N2), WinNav(us.N5), _______,             _______, _______, _______, _______, _______,
+                    _______, WinNav(us.N3), WinNav(us.N8), _______,             _______, _______, _______, _______,
+                                                            _______,             _______
+    },
 
 };
 
@@ -90,15 +100,20 @@ pub const dimensions = core.KeymapDimensions{
 };
 
 const combo = zigmkay.combo.Options{
-    .combo_timeout = .{ .ms = 50 },
+    .combo_timeout = .{ .ms = 40 },
     .tapping_term = .{ .ms = 200 },
+};
+
+const quote_combo = zigmkay.combo.Options{
+    .combo_timeout = tapping_term,
+    .tapping_term = tapping_term,
 };
 
 pub const combos = [_]core.Combo2Def{
     combo.Combo_Tap(.{ 25, 26 }, L_BASE, us.COLN),
     combo.Combo_Tap(.{ 25, 26 }, L_ARROWS, us.COLN),
-    // combo.Combo_Tap(.{ 26, 27 }, L_BASE, us.DQUO),
-    // combo.Combo_Tap(.{ 26, 27 }, L_ARROWS, us.DQUO),
+    quote_combo.Combo_Tap(.{ 26, 27 }, L_BASE, us.DIAE),
+    quote_combo.Combo_Tap(.{ 26, 27 }, L_ARROWS, us.DIAE),
     combo.Combo_Tap_HoldMod(.{ 20, 21 }, L_BASE, us.Z, .{ .right_ctrl = true }),
     combo.Combo_Tap_HoldMod(.{ 1, 2 }, L_BASE, us.Z, .{ .right_ctrl = true }),
 
@@ -133,9 +148,39 @@ pub const combos = [_]core.Combo2Def{
     combo.Combo_Tap(.{ 16, 17 }, L_ARROWS, us.PIPE),
 
     combo.Combo_Tap(.{ 20, 21 }, L_ARROWS, us.BSLS),
+
+    combo.Combo_Custom(.{ 1, 3 }, L_ARROWS, CUSTOM_TAP_EQ_COL),
 };
 
-pub const custom_functions: core.CustomFunctions = .{};
+const CUSTOM_TAP_EQ_COL: u8 = 3;
+
+fn on_event(event: core.ProcessorEvent, layers: *core.LayerActivations, output_queue: *core.OutputCommandQueue) void {
+    switch (event) {
+        .OnHoldEnterAfter => |data| {
+            layers.set_layer_state(L_BOTH, layers.is_layer_active(L_LEFT) and layers.is_layer_active(L_RIGHT));
+            if (data.hold.custom) |keycode| {
+                output_queue.tap_key(.{
+                    .tap_keycode = keycode,
+                    .tap_modifiers = data.hold.hold_modifiers,
+                }) catch {};
+            }
+        },
+        .OnHoldExitAfter => {
+            layers.set_layer_state(L_BOTH, layers.is_layer_active(L_LEFT) and layers.is_layer_active(L_RIGHT));
+        },
+        .OnTapEnterBefore => |data| {
+            if (data.tap.custom == CUSTOM_TAP_EQ_COL) {
+                output_queue.tap_key(kc.SPC) catch {};
+                output_queue.tap_key(us.COLN) catch {};
+                output_queue.tap_key(us.EQL) catch {};
+                output_queue.tap_key(kc.SPC) catch {};
+            }
+        },
+        else => {},
+    }
+}
+
+pub const custom_functions: core.CustomFunctions = .{ .on_event = on_event };
 
 // TODO: Should these go somewhere else?
 
