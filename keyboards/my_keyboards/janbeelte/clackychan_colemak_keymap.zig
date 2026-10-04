@@ -24,7 +24,7 @@ const tapping_term: core.TimeSpan = .{ .ms = 200 };
 const H_ = macros.OptionsHomeRowMods{ .tapping_term = tapping_term };
 const B_ = macros.OptionsBasicKeydef{ .tapping_term = tapping_term };
 
-const L_BASE: usize = 0;
+pub const L_BASE: usize = 0;
 const L_ARROWS: usize = 1;
 const L_NUM: usize = 2;
 const L_EMPTY: usize = 3;

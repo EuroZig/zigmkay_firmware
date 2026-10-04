@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const keymap = @import("keymap.zig");
+const keymap = @import("clackychan_colemak_keymap.zig");
 const zigmkay = @import("zigmkay");
 const microzig = @import("microzig");
 comptime {
