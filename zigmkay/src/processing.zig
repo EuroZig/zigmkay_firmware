@@ -9,6 +9,7 @@ pub fn CreateProcessorType(
     comptime combos: []const core.Combo2Def,
     comptime custom: *const core.CustomFunctions,
     comptime encoder_actions: []const core.EncoderAction,
+    comptime matrix_event_trace: ?core.MatrixEventTrace,
 ) type {
     return struct {
         const Self = @This();
@@ -46,6 +47,9 @@ pub fn CreateProcessorType(
                 const data: []core.MatrixStateChange = self.input_matrix_changes.peek_all()[0..];
                 switch (try process_next(self, data, current_time)) {
                     .DequeueAndRunAgain => |dequeue_info| {
+                        for (data[0..dequeue_info.dequeue_count]) |event| {
+                            report_matrix_event(self, event);
+                        }
                         try self.input_matrix_changes.dequeue_count(dequeue_info.dequeue_count);
                     },
                     .Stop => break,
@@ -53,6 +57,18 @@ pub fn CreateProcessorType(
             }
 
             try tick_autofire(self, current_time);
+        }
+
+        /// Best effort: a full output queue must not turn diagnostics into a fatal error.
+        fn report_matrix_event(self: *Self, event: core.MatrixStateChange) void {
+            if (matrix_event_trace) |trace| {
+                if (trace.includes(event.key_index)) {
+                    const layer = self.layers_activations.get_top_most_active_layer();
+                    const modifiers = self.output_usb_commands.get_current_modifiers();
+                    const message = core.LogMessage.init(event.pressed, event.key_index, layer, modifiers);
+                    self.output_usb_commands.send_raw_hid_signal(trace.signal_id, &message.toBytes()) catch {};
+                }
+            }
         }
 
         fn process_next(self: *Self, data: []core.MatrixStateChange, current_time: core.TimeSinceBoot) !ProcessContinuation {

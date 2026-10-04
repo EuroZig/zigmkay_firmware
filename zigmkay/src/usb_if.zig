@@ -206,7 +206,10 @@ pub const ControllerType = usb.DeviceController(.{
     .device_triple = .unspecified,
     .vendor = .{ .id = 0xFAFA, .str = "OpenKeyboardCollective" },
     .product = .{ .id = 0x00F0, .str = "ZigMkay" },
-    .bcd_device = .v1_00,
+    // Keep this in sync with descriptor-set changes. Hosts cache HID report
+    // descriptors by device identity, so changing the revision forces them to
+    // enumerate newly added interfaces such as RawHID.
+    .bcd_device = .v1_10,
     .serial = "00000001",
     .max_supported_packet_size = USB_Device.max_supported_packet_size,
     .configurations = &.{.{

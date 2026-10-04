@@ -55,8 +55,28 @@ pub fn build(b: *std.Build) void {
     firmware.add_app_import("zkeycodes", zkeycodes_mod, .{ .depend_on_microzig = true });
     mb.install_firmware(firmware, .{});
 
-    const firmware_uf2 = firmware.get_emitted_bin(.{ .uf2 = .{} });
+    const firmware_uf2 = firmware.get_emitted_bin(.{ .uf2 = .{ .family_id = .RP2040 } });
     b.addNamedLazyPath("firmware_uf2", firmware_uf2);
+
+    const test_step = b.step("test", "Run keyboard regression tests");
+    const keymap_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/test_clackychan_combos.zig"),
+        .target = b.graph.host,
+        .imports = &.{
+            .{ .name = "zigmkay", .module = zigmkay_mod },
+        },
+    });
+    const clackychan_keymap_module = b.createModule(.{
+        .root_source_file = b.path("my_keyboards/janbeelte/clackychan_colemak/keymap.zig"),
+        .target = b.graph.host,
+        .imports = &.{
+            .{ .name = "zigmkay", .module = zigmkay_mod },
+            .{ .name = "zkeycodes", .module = zkeycodes_mod },
+        },
+    });
+    keymap_test_module.addImport("clackychan_keymap", clackychan_keymap_module);
+    const keymap_tests = b.addTest(.{ .root_module = keymap_test_module });
+    test_step.dependOn(&b.addRunArtifact(keymap_tests).step);
 
     const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through a mounted RP2 bootloader volume");
     const flash_command = b.addSystemCommand(&.{ "sh", "-c", "until diskutil info \"$2\" >/dev/null 2>&1; do sleep 0.2; done; sleep 0.5; cp \"$1\" \"$2/firmware.uf2\" && sync", "sh" });
@@ -77,31 +97,21 @@ pub fn build(b: *std.Build) void {
     }
 }
 
-/// Waits for a BOOTSEL device, loads and verifies a UF2 image, then reboots the
-/// device into application mode. The returned reboot command depends on the
-/// whole sequence, so downstream steps only need to depend on the result.
+/// Compiles the firmware first, then runs one uncached host tool which reports
+/// the exact UF2 hash, waits for BOOTSEL, loads and verifies it, and reboots.
 pub fn addPicotoolFlashCommand(b: *std.Build, firmware_uf2: std.Build.LazyPath) *std.Build.Step.Run {
-    const wait_for_pico = b.addExecutable(.{
-        .name = "wait_for_pico",
+    const picotool_flash = b.addExecutable(.{
+        .name = "picotool_flash",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("../tools/wait_for_pico.zig"),
+            .root_source_file = b.path("../tools/picotool_flash.zig"),
             .target = b.graph.host,
             .optimize = .ReleaseSafe,
         }),
     });
-    const wait_command = b.addRunArtifact(wait_for_pico);
-    wait_command.has_side_effects = true;
-    firmware_uf2.addStepDependencies(&wait_command.step);
-
-    const load_command = b.addSystemCommand(&.{ "picotool", "load", "--force-no-reboot", "--verify" });
-    load_command.addFileArg(firmware_uf2);
-    load_command.has_side_effects = true;
-    load_command.step.dependOn(&wait_command.step);
-
-    const reboot_command = b.addSystemCommand(&.{ "picotool", "reboot", "--application" });
-    reboot_command.has_side_effects = true;
-    reboot_command.step.dependOn(&load_command.step);
-    return reboot_command;
+    const flash_command = b.addRunArtifact(picotool_flash);
+    flash_command.addFileArg(firmware_uf2);
+    flash_command.has_side_effects = true;
+    return flash_command;
 }
 
 fn keyboardOptionDescription(b: *std.Build) []const u8 {

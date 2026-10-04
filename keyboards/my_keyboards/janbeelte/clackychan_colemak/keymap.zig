@@ -104,6 +104,10 @@ const combo = zigmkay.combo.Options{
     .tapping_term = .{ .ms = 200 },
 };
 
+// Plain Shift+' instead of us.DIAE: the dead variant makes the firmware tap a
+// space afterwards, which macOS layouts without a dead " print literally.
+const DQUO = kcm.L_SFT(kc.QUOT);
+
 const quote_combo = zigmkay.combo.Options{
     .combo_timeout = tapping_term,
     .tapping_term = tapping_term,
@@ -112,8 +116,8 @@ const quote_combo = zigmkay.combo.Options{
 pub const combos = [_]core.Combo2Def{
     combo.Combo_Tap(.{ 25, 26 }, L_BASE, us.COLN),
     combo.Combo_Tap(.{ 25, 26 }, L_ARROWS, us.COLN),
-    quote_combo.Combo_Tap(.{ 26, 27 }, L_BASE, us.DIAE),
-    quote_combo.Combo_Tap(.{ 26, 27 }, L_ARROWS, us.DIAE),
+    quote_combo.Combo_Tap(.{ 26, 27 }, L_BASE, DQUO),
+    quote_combo.Combo_Tap(.{ 26, 27 }, L_ARROWS, DQUO),
     combo.Combo_Tap_HoldMod(.{ 20, 21 }, L_BASE, us.Z, .{ .right_ctrl = true }),
     combo.Combo_Tap_HoldMod(.{ 1, 2 }, L_BASE, us.Z, .{ .right_ctrl = true }),
 

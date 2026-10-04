@@ -32,6 +32,7 @@ fn CreatePrimaryConfig(comptime dimensions: *const core.KeymapDimensions) type {
 
         encoder_pin_configs: []encoder_scanning.EncoderPinConfig = &.{},
         encoder_actions: []core.EncoderAction = &.{},
+        matrix_event_trace: ?core.MatrixEventTrace = null,
     };
 }
 
@@ -88,7 +89,7 @@ fn run_primary_internal(
     var encoder_scanner = comptime encoder_scanning.CreateEncoderScannerType(config.encoder_pin_configs){};
 
     // Processing
-    var processor = processing.CreateProcessorType(dimensions, config.keymap, config.side_definition, config.combos, config.custom_functions, config.encoder_actions){
+    var processor = processing.CreateProcessorType(dimensions, config.keymap, config.side_definition, config.combos, config.custom_functions, config.encoder_actions, config.matrix_event_trace){
         .input_matrix_changes = &matrix_change_queue,
         .output_usb_commands = &usb_command_queue,
         .encoder_event_changes = &encoder_change_queue,
