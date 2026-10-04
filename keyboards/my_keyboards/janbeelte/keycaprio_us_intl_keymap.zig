@@ -50,7 +50,7 @@ pub const keymap = [_][key_count]?core.KeyDef{
         T(us.Q),       T(us.W),            T(us.E),            H_.S(us.R),       T(us.T),                   T(us.Y),                T(us.U),       T(us.I),       T(us.O),              T(us.P),
         H_.S(us.A),    H_.G(us.S),         H_.A(us.D),         H_.C(us.F),       CtlH(us.G, us.T),          T(us.H),                H_.C(us.J),    H_.A(us.K),    H_.G(us.L),           H_.S(us.SCLN),
         T(us.Z),       CtlH(us.X, us.X),   CtlH(us.C, us.C),   CtlH(us.V, us.V), T(us.B),                   T(us.N),                T(us.M),       T(us.COMM),    B_.LT(L_WIN, us.DOT), T(us.SLSH),
-                                                               T(kc.ENT),        B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.ENT), T(kc.ENT),
+                                                               T(kc.ENT),        B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.SPC), T(kc.ENT),
     },
     // L_ARROWS - WIP (SEMICOLON & PLUS & TILD up for debate)
     .{
@@ -71,7 +71,7 @@ pub const keymap = [_][key_count]?core.KeyDef{
         _______,       _______,            _______,            _______,          _______,                   _______,                _______,       _______,       _______,              _______,
         _______,       _______,            _______,            _______,          _______,                   _______,                _______,       _______,       _______,              _______,
         _______,       _______,            _______,            _______,          _______,                   _______,                _______,       _______,       _______,              _______,
-                                                               T(kc.ENT),        B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.ENT), T(kc.ENT),
+                                                               T(kc.ENT),        B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.SPC), T(kc.ENT),
     },
     // L_BOTH - WIP (BACKSPC & ESC & TAB & GRAVE & CART up for debate, do we want SCRNSHT without shift?)
     .{

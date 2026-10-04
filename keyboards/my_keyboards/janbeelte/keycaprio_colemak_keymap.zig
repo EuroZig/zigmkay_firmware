@@ -65,7 +65,7 @@ pub const keymap = [_][key_count]?core.KeyDef{
         _______,       _______,            _______,            _______,       _______,                   _______,                _______,       _______,       _______,              _______,
         _______,       _______,            _______,            _______,       _______,                   _______,                _______,       _______,       _______,              _______,
         _______,       _______,            _______,            _______,       _______,                   _______,                _______,       _______,       _______,              _______,
-                                                               T(kc.ENT),     B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.ENT), T(kc.ENT),
+                                                               T(kc.ENT),     B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.SPC), T(kc.ENT),
     },
     // L_BOTH - WIP (BACKSPC & ESC & TAB & GRAVE & CART up for debate, do we want SCRNSHT without shift?)
     .{
