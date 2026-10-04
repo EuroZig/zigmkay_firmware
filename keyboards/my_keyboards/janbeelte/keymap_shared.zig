@@ -38,11 +38,6 @@ pub const combo = zigmkay.combo.Options{
     .tapping_term = .{ .ms = 200 },
 };
 
-pub const quote_combo = zigmkay.combo.Options{
-    .combo_timeout = tapping_term,
-    .tapping_term = tapping_term,
-};
-
 pub const CUSTOM_TAP_EQ_COL: u8 = 3;
 
 fn on_event(event: core.ProcessorEvent, layers: *core.LayerActivations, output_queue: *core.OutputCommandQueue) void {

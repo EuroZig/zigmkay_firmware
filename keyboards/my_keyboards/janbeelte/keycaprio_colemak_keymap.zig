@@ -20,7 +20,6 @@ const REDO = shared.REDO;
 const SCRNSHT = shared.SCRNSHT;
 const DQUO = shared.DQUO;
 const combo = shared.combo;
-const quote_combo = shared.quote_combo;
 
 const L_BASE = shared.L_BASE;
 const L_ARROWS = shared.L_ARROWS;
@@ -93,8 +92,8 @@ pub const dimensions = core.KeymapDimensions{
 pub const combos = [_]core.Combo2Def{
     combo.Combo_Tap(.{ 26, 27 }, L_BASE, us.COLN),
     combo.Combo_Tap(.{ 26, 27 }, L_ARROWS, us.COLN),
-    quote_combo.Combo_Tap(.{ 27, 28 }, L_BASE, DQUO),
-    quote_combo.Combo_Tap(.{ 27, 28 }, L_ARROWS, DQUO),
+    combo.Combo_Tap(.{ 27, 28 }, L_BASE, DQUO),
+    combo.Combo_Tap(.{ 27, 28 }, L_ARROWS, DQUO),
     combo.Combo_Tap_HoldMod(.{ 21, 22 }, L_BASE, us.Z, .{ .right_ctrl = true }),
     combo.Combo_Tap_HoldMod(.{ 1, 2 }, L_BASE, us.Z, .{ .right_ctrl = true }),
 
