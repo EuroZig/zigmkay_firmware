@@ -15,6 +15,7 @@ const keyboard_samples = [_]KeyboardSample{
     .{ .name = "clacky_chan", .root_source_file = "my_keyboards/rollercole/clacky_chan.zig" },
     .{ .name = "clackychan_colemak", .root_source_file = "my_keyboards/janbeelte/clackychan_main.zig" },
     .{ .name = "keycaprio_colemak_0_6", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_6.zig" },
+    .{ .name = "keycaprio_us_intl_0_7", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_7.zig" },
     .{ .name = "lk1", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_1.zig" },
     .{ .name = "lk2", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_2.zig" },
     .{ .name = "lk6", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_6.zig" },
@@ -45,15 +46,7 @@ pub fn build(b: *std.Build) void {
         std.debug.panic("Unknown keyboard sample: '{s}'", .{selected_keyboard});
     };
 
-    const firmware = mb.add_firmware(.{
-        .name = "zigmkay_firmware",
-        .target = &target,
-        .optimize = optimize,
-        .root_source_file = b.path(sample.root_source_file),
-    });
-
-    firmware.add_app_import("zigmkay", zigmkay_mod, .{ .depend_on_microzig = true });
-    firmware.add_app_import("zkeycodes", zkeycodes_mod, .{ .depend_on_microzig = true });
+    const firmware = addKeyboardFirmware(b, mb, &target, optimize, "zigmkay_firmware", sample.root_source_file, zigmkay_dep, zkeycodes_dep);
     mb.install_firmware(firmware, .{});
 
     const firmware_uf2 = firmware.get_emitted_bin(.{ .uf2 = .{ .family_id = .RP2040 } });
@@ -79,6 +72,13 @@ pub fn build(b: *std.Build) void {
     const keymap_tests = b.addTest(.{ .root_module = keymap_test_module });
     test_step.dependOn(&b.addRunArtifact(keymap_tests).step);
 
+    // Compile every keyboard so a broken keymap fails the tests, not just the
+    // one selected with -Dkeyboard.
+    for (keyboard_samples) |keyboard| {
+        const keyboard_firmware = addKeyboardFirmware(b, mb, &target, optimize, keyboard.name, keyboard.root_source_file, zigmkay_dep, zkeycodes_dep);
+        test_step.dependOn(&keyboard_firmware.exe.step);
+    }
+
     const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through a mounted RP2 bootloader volume");
     const flash_command = b.addSystemCommand(&.{ "sh", "-c", "until diskutil info \"$2\" >/dev/null 2>&1; do sleep 0.2; done; sleep 0.5; cp \"$1\" \"$2/firmware.uf2\" && sync", "sh" });
     flash_command.addFileArg(firmware_uf2);
@@ -96,6 +96,35 @@ pub fn build(b: *std.Build) void {
     } else {
         flash_step.dependOn(&flash_command.step);
     }
+}
+
+/// Each firmware gets its own zigmkay/zkeycodes module instances: add_app_import
+/// wires the firmware's microzig into them, so sharing one instance between
+/// several firmwares makes microzig appear twice in the same module graph.
+fn addKeyboardFirmware(
+    b: *std.Build,
+    mb: *MicroBuild,
+    target: *const microzig.Target,
+    optimize: std.builtin.OptimizeMode,
+    name: []const u8,
+    root_source_file: []const u8,
+    zigmkay_dep: *std.Build.Dependency,
+    zkeycodes_dep: *std.Build.Dependency,
+) *MicroBuild.Firmware {
+    const firmware = mb.add_firmware(.{
+        .name = name,
+        .target = target,
+        .optimize = optimize,
+        .root_source_file = b.path(root_source_file),
+    });
+    const zigmkay_mod = b.createModule(.{ .root_source_file = zigmkay_dep.path("src/root.zig") });
+    const zkeycodes_mod = b.createModule(.{
+        .root_source_file = zkeycodes_dep.path("root.zig"),
+        .imports = &.{.{ .name = "zigmkay", .module = zigmkay_mod }},
+    });
+    firmware.add_app_import("zigmkay", zigmkay_mod, .{ .depend_on_microzig = true });
+    firmware.add_app_import("zkeycodes", zkeycodes_mod, .{ .depend_on_microzig = true });
+    return firmware;
 }
 
 /// Compiles the firmware first, then runs one uncached host tool which reports
