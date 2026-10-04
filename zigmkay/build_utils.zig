@@ -33,3 +33,31 @@ pub fn add_test_steps(b: *std.Build, zigmkay_module: *std.Build.Module, test_ste
         }
     }
 }
+
+/// Builds and installs the `picotool_flash` host tool so that dependents can
+/// fetch it with `dependency.artifact("picotool_flash")`. `source_path` is the
+/// tool's path relative to the calling package root.
+pub fn install_picotool_flash(b: *std.Build, source_path: []const u8) void {
+    const picotool_flash = b.addExecutable(.{
+        .name = "picotool_flash",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(source_path),
+            .target = b.graph.host,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+    b.installArtifact(picotool_flash);
+}
+
+/// Adds an uncached run step that flashes `firmware_uf2` with picotool: it
+/// reports the UF2 hash, waits for a device in BOOTSEL mode, loads and verifies
+/// the firmware, and reboots. The UF2 must carry the RP2040 family ID, e.g.
+/// `firmware.get_emitted_bin(.{ .uf2 = .{ .family_id = .RP2040 } })`.
+/// `dependency` is the package that installs picotool_flash (this repo's root
+/// or the zigmkay subpackage).
+pub fn addPicotoolFlash(b: *std.Build, dependency: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) *std.Build.Step.Run {
+    const flash_command = b.addRunArtifact(dependency.artifact("picotool_flash"));
+    flash_command.addFileArg(firmware_uf2);
+    flash_command.has_side_effects = true;
+    return flash_command;
+}
