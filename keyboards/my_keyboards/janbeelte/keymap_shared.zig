@@ -15,6 +15,42 @@ pub const tapping_term: core.TimeSpan = .{ .ms = 200 };
 
 pub const H_ = macros.OptionsHomeRowMods{ .tapping_term = tapping_term };
 pub const B_ = macros.OptionsBasicKeydef{ .tapping_term = tapping_term };
+/// Home-row mods sending the right-hand modifiers (for keys on the right half).
+pub const HR_ = RightHomeRowMods{ .tapping_term = tapping_term };
+
+pub const RightHomeRowMods = struct {
+    tapping_term: core.TimeSpan,
+
+    /// Tap sends `keycode_fire`; hold sends Right GUI.
+    pub fn G(self: RightHomeRowMods, keycode_fire: core.KeyCodeFire) core.KeyDef {
+        return self.mod(.{ .right_gui = true }, keycode_fire);
+    }
+
+    /// Tap sends `keycode_fire`; hold sends Right Control.
+    pub fn C(self: RightHomeRowMods, keycode_fire: core.KeyCodeFire) core.KeyDef {
+        return self.mod(.{ .right_ctrl = true }, keycode_fire);
+    }
+
+    /// Tap sends `keycode_fire`; hold sends Right Alt (AltGr on Windows/Linux international layouts).
+    pub fn A(self: RightHomeRowMods, keycode_fire: core.KeyCodeFire) core.KeyDef {
+        return self.mod(.{ .right_alt = true }, keycode_fire);
+    }
+
+    /// Tap sends `keycode_fire`; hold sends Right Shift.
+    pub fn S(self: RightHomeRowMods, keycode_fire: core.KeyCodeFire) core.KeyDef {
+        return self.mod(.{ .right_shift = true }, keycode_fire);
+    }
+
+    fn mod(self: RightHomeRowMods, modifiers: core.Modifiers, keycode_fire: core.KeyCodeFire) core.KeyDef {
+        return core.KeyDef{
+            .tap_hold = .{
+                .tap = .{ .key_press = keycode_fire },
+                .hold = core.HoldDef{ .hold_modifiers = modifiers },
+                .tapping_term = self.tapping_term,
+            },
+        };
+    }
+};
 
 pub const L_BASE: usize = 0;
 pub const L_ARROWS: usize = 1;
@@ -32,6 +68,9 @@ pub const SCRNSHT = _GCS(us.N4);
 // Plain Shift+' instead of us.DIAE: the dead variant makes the firmware tap a
 // space afterwards, which macOS layouts without a dead " print literally.
 pub const DQUO = kcm.L_SFT(kc.QUOT);
+
+// Plain Shift+` instead of us.DTIL, for the same trailing-space reason as DQUO.
+pub const TILD = kcm.L_SFT(kc.GRV);
 
 pub const combo = zigmkay.combo.Options{
     .combo_timeout = .{ .ms = 40 },

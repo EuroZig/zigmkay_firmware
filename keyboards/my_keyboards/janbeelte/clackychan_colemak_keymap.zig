@@ -13,12 +13,14 @@ const WinNav = zigmkay.macros.WinNav;
 
 const shared = @import("keymap_shared.zig");
 const H_ = shared.H_;
+const HR_ = shared.HR_;
 const B_ = shared.B_;
 const GuiH = shared.GuiH;
 const UNDO = shared.UNDO;
 const REDO = shared.REDO;
 const SCRNSHT = shared.SCRNSHT;
 const DQUO = shared.DQUO;
+const TILD = shared.TILD;
 const combo = shared.combo;
 
 const L_BASE = shared.L_BASE;
@@ -41,44 +43,44 @@ pub const sides = [key_count]core.Side{
 pub const keymap = [_][key_count]?core.KeyDef{
     // L_BASE
     .{
-        T(us.Q),       T(us.W),            T(us.F),            H_.S(us.P),    T(us.B),                   T(us.J),                T(us.L),       T(us.U),       T(us.Y),              T(us.SCLN),
-        H_.S(us.A),    H_.C(us.R),         H_.A(us.S),         H_.G(us.T),    GuiH(us.G, us.T),          T(us.M),                H_.G(us.N),    H_.A(us.E),    H_.C(us.I),           H_.S(us.O),
-                       GuiH(us.X, us.X),   GuiH(us.C, us.C),   T(us.D),       GuiH(us.V, us.V),          T(us.K),                T(us.H),       T(us.COMM),    B_.LT(L_WIN, us.DOT),
+        T(us.Q),       T(us.W),            T(us.F),            H_.S(us.P),    T(us.B),                   T(us.J),                T(us.L),        T(us.U),        T(us.Y),              T(us.SCLN),
+        H_.S(us.A),    H_.C(us.R),         H_.A(us.S),         H_.G(us.T),    GuiH(us.G, us.T),          T(us.M),                HR_.G(us.N),    HR_.A(us.E),    HR_.C(us.I),          HR_.S(us.O),
+                       GuiH(us.X, us.X),   GuiH(us.C, us.C),   T(us.D),       GuiH(us.V, us.V),          T(us.K),                T(us.H),        T(us.COMM),     B_.LT(L_WIN, us.DOT),
                                                                               B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.ENT),
     },
     // L_ARROWS - WIP (SEMICOLON & PLUS & TILD up for debate)
     .{
-        H_.G(us.LBRC), T(us.RBRC),         T(us.LCBR),         H_.S(us.RCBR), T(us.HASH),                T(us.AT),               T(kc.HOME),    AF(kc.UP),     T(kc.END),            T(us.PLUS),
-        H_.S(us.LABK), H_.C(us.RABK),      H_.A(us.LPRN),      H_.G(us.RPRN), T(us.SLSH),                T(kc.PGUP),             AF(kc.LEFT),   AF(kc.DOWN),   AF(kc.RIGHT),         H_.S(kc.PGDN),
-                       T(us.DTIL),         T(us.AMPR),         T(us.ASTR),    T(kc.BSLS),                T(us.DLR),              H_.G(us.SCLN), H_.A(us.ACUT), H_.C(us.DGRV),
+        H_.G(us.LBRC), T(us.RBRC),         T(us.LCBR),         H_.S(us.RCBR), T(us.HASH),                T(us.AT),               T(kc.HOME),     AF(kc.UP),      T(kc.END),            T(us.PLUS),
+        H_.S(us.LABK), H_.C(us.RABK),      H_.A(us.LPRN),      H_.G(us.RPRN), T(us.SLSH),                T(kc.PGUP),             AF(kc.LEFT),    AF(kc.DOWN),    AF(kc.RIGHT),         HR_.S(kc.PGDN),
+                       T(TILD),            T(us.AMPR),         T(us.ASTR),    T(kc.BSLS),                T(us.DLR),              HR_.G(us.SCLN), HR_.A(us.ACUT), HR_.C(kc.GRV),
                                                                               B_.LT(L_LEFT, kc.ENT),     _______,
     },
     // L_NUM
     .{
-        H_.G(kc.ESC),  T(SCRNSHT),         T(us.PERC),         H_.S(us.DCIR), T(us.DGRV),                T(us.UNDS),             T(us.N7),      T(us.N8),      T(us.N9),             T(us.EQL),
-        AF(kc.BSPC),   H_.C(UNDO),         H_.A(REDO),         H_.G(kc.ENT),  T(kc.TAB),                 T(us.MINS),             H_.G(us.N4),   H_.A(us.N5),   H_.C(us.N6),          H_.S(us.PLUS),
-                       T(kcm.L_GUI(us.X)), T(kcm.L_GUI(us.C)), T(kc.DEL),     T(kcm.L_GUI(us.V)),        T(us.EURO),             T(us.N1),      T(us.N2),      T(us.N3),
+        H_.G(kc.ESC),  T(SCRNSHT),         T(us.PERC),         H_.S(us.DCIR), T(kc.GRV),                 T(us.UNDS),             T(us.N7),       T(us.N8),       T(us.N9),             T(us.EQL),
+        AF(kc.BSPC),   H_.C(UNDO),         H_.A(REDO),         H_.G(kc.ENT),  T(kc.TAB),                 T(us.MINS),             HR_.G(us.N4),   HR_.A(us.N5),   HR_.C(us.N6),         HR_.S(us.PLUS),
+                       T(kcm.L_GUI(us.X)), T(kcm.L_GUI(us.C)), T(kc.DEL),     T(kcm.L_GUI(us.V)),        T(us.EURO),             T(us.N1),       T(us.N2),       T(us.N3),
                                                                               _______,                   B_.LT(L_RIGHT, us.N0),
     },
     // L_EMPTY
     .{
-        _______,       _______,            _______,            _______,       _______,                   _______,                _______,       _______,       _______,              _______,
-        _______,       _______,            _______,            _______,       _______,                   _______,                _______,       _______,       _______,              _______,
-                       _______,            _______,            _______,       _______,                   _______,                _______,       _______,       _______,
+        _______,       _______,            _______,            _______,       _______,                   _______,                _______,        _______,        _______,              _______,
+        _______,       _______,            _______,            _______,       _______,                   _______,                _______,        _______,        _______,              _______,
+                       _______,            _______,            _______,       _______,                   _______,                _______,        _______,        _______,
                                                                               B_.LT(L_LEFT, kc.SPC),     B_.LT(L_RIGHT, kc.ENT),
     },
     // L_BOTH - WIP (BACKSPC & ESC & TAB & GRAVE & CART up for debate, do we want SCRNSHT without shift?)
     .{
-        H_.G(kc.ESC),  T(kc.F7),           T(kc.F8),           H_.S(kc.F9),   T(kc.F10),                 T(kcm.L_GUI(us.DGRV)),  H_.S(kc.SPC),  T(kc.SPC),     T(kc.SPC),            T(kc.TAB),
-        AF(kc.BSPC),   H_.C(kc.F4),        H_.A(kc.F5),        H_.G(kc.F6),   T(kc.F11),                 T(us.SS),               H_.G(kc.BSPC), H_.A(kc.BSPC), H_.C(kc.BSPC),        H_.S(kc.ESC),
-                       T(kc.F1),           T(kc.F2),           T(kc.F3),      T(kc.F12),                 T(us.DCIR),             T(kc.DEL),     T(kc.DEL),     T(kc.DEL),
+        H_.G(kc.ESC),  T(kc.F7),           T(kc.F8),           H_.S(kc.F9),   T(kc.F10),                 T(kcm.L_GUI(us.DGRV)),  HR_.S(kc.SPC),  T(kc.SPC),      T(kc.SPC),            T(kc.TAB),
+        AF(kc.BSPC),   H_.C(kc.F4),        H_.A(kc.F5),        H_.G(kc.F6),   T(kc.F11),                 T(us.SS),               HR_.G(kc.BSPC), HR_.A(kc.BSPC), HR_.C(kc.BSPC),       HR_.S(kc.ESC),
+                       T(kc.F1),           T(kc.F2),           T(kc.F3),      T(kc.F12),                 T(us.DCIR),             T(kc.DEL),      T(kc.DEL),      T(kc.DEL),
                                                                               _______,                   _______,
     },
     // L_WIN - window navigation shortcuts, activated by holding the base-layer dot key
     .{
-        WinNav(us.N7), _______,            WinNav(us.N1),      WinNav(us.N6), _______,                   _______,                _______,       _______,       _______,              _______,
-        WinNav(us.N4), _______,            WinNav(us.N2),      WinNav(us.N5), _______,                   _______,                _______,       _______,       _______,              _______,
-                       _______,            WinNav(us.N3),      WinNav(us.N8), _______,                   _______,                _______,       _______,       _______,
+        WinNav(us.N7), _______,            WinNav(us.N1),      WinNav(us.N6), _______,                   _______,                _______,        _______,        _______,              _______,
+        WinNav(us.N4), _______,            WinNav(us.N2),      WinNav(us.N5), _______,                   _______,                _______,        _______,        _______,              _______,
+                       _______,            WinNav(us.N3),      WinNav(us.N8), _______,                   _______,                _______,        _______,        _______,
                                                                               _______,                   _______,
     },
 };
