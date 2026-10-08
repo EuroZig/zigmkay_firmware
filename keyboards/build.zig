@@ -80,9 +80,23 @@ pub fn build(b: *std.Build) void {
     }
 
     const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through a mounted RP2 bootloader volume");
-    const flash_command = b.addSystemCommand(&.{ "sh", "-c", "until diskutil info \"$2\" >/dev/null 2>&1; do sleep 0.2; done; sleep 0.5; cp \"$1\" \"$2/firmware.uf2\" && sync", "sh" });
+    // Desktops without an automounter (e.g. COSMIC) leave the RP2 volume unmounted, so mount it via udisksctl when available.
+    const flash_command = b.addSystemCommand(&.{
+        "sh", "-c",
+        \\mount="${2:-/run/media/$USER/RPI-RP2}"
+        \\dev=/dev/disk/by-label/RPI-RP2
+        \\until [ -d "$mount" ]; do
+        \\  if [ -e "$dev" ] && command -v udisksctl >/dev/null; then udisksctl mount -b "$dev" >/dev/null 2>&1; fi
+        \\  sleep 0.2
+        \\done
+        \\sleep 0.5; cp "$1" "$mount/firmware.uf2" && sync
+        ,
+        "sh",
+    });
     flash_command.addFileArg(firmware_uf2);
-    flash_command.addArg(b.option([]const u8, "flash-mount", "Mounted RP2 bootloader volume") orelse "/Volumes/RPI-RP2");
+    // An empty value lets the shell fall back to the Linux udisks mount point for the current user.
+    const default_flash_mount = if (builtin.os.tag == .macos) "/Volumes/RPI-RP2" else "";
+    flash_command.addArg(b.option([]const u8, "flash-mount", "Mounted RP2 bootloader volume") orelse default_flash_mount);
     flash_command.has_side_effects = true;
     flash_mount_step.dependOn(&flash_command.step);
 
