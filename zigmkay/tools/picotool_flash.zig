@@ -9,8 +9,10 @@ pub fn main(init: std.process.Init) !void {
     var args = try std.process.Args.Iterator.initAllocator(init.minimal.args, allocator);
     defer args.deinit();
     _ = args.next();
-    const firmware_path = args.next() orelse std.process.fatal("usage: picotool_flash <firmware.uf2>", .{});
-    if (args.next() != null) std.process.fatal("usage: picotool_flash <firmware.uf2>", .{});
+    const usage = "usage: picotool_flash <picotool> <firmware.uf2>";
+    const picotool = args.next() orelse std.process.fatal(usage, .{});
+    const firmware_path = args.next() orelse std.process.fatal(usage, .{});
+    if (args.next() != null) std.process.fatal(usage, .{});
 
     const firmware = try std.Io.Dir.cwd().readFileAlloc(io, firmware_path, allocator, .limited(16 * 1024 * 1024));
     defer allocator.free(firmware);
@@ -23,16 +25,16 @@ pub fn main(init: std.process.Init) !void {
     std.debug.print("Waiting for an RP-series device in BOOTSEL mode...\n", .{});
 
     while (true) {
-        const term = try run(io, &.{ "picotool", "info" }, .ignore);
+        const term = try run(io, &.{ picotool, "info" }, .ignore);
         if (term.success()) break;
         try std.Io.sleep(io, poll_interval, .awake);
     }
 
     std.debug.print("BOOTSEL device found; loading and verifying firmware...\n", .{});
-    const load_term = try run(io, &.{ "picotool", "load", "--verify", firmware_path }, .inherit);
+    const load_term = try run(io, &.{ picotool, "load", "--verify", firmware_path }, .inherit);
     if (!load_term.success()) std.process.fatal("picotool load failed: {f}", .{load_term});
 
-    const reboot_term = try run(io, &.{ "picotool", "reboot", "--application" }, .inherit);
+    const reboot_term = try run(io, &.{ picotool, "reboot", "--application" }, .inherit);
     if (!reboot_term.success()) std.process.fatal("picotool reboot failed: {f}", .{reboot_term});
 }
 
@@ -61,7 +63,7 @@ fn run(io: std.Io, argv: []const []const u8, output_behavior: std.process.SpawnO
         .stdout = output_behavior,
         .stderr = output_behavior,
     }) catch |err| switch (err) {
-        error.FileNotFound => std.process.fatal("unable to run {s}; make sure it is installed and in PATH", .{argv[0]}),
+        error.FileNotFound => std.process.fatal("unable to run {s}", .{argv[0]}),
         else => return err,
     };
     return child.wait(io);

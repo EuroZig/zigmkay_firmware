@@ -1,5 +1,4 @@
 const std = @import("std");
-const builtin = @import("builtin");
 
 const microzig = @import("microzig");
 const MicroBuild = microzig.MicroBuild(.{
@@ -80,37 +79,9 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&keyboard_firmware.exe.step);
     }
 
-    const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through a mounted RP2 bootloader volume");
-    // Desktops without an automounter (e.g. COSMIC) leave the RP2 volume unmounted, so mount it via udisksctl when available.
-    const flash_command = b.addSystemCommand(&.{
-        "sh", "-c",
-        \\mount="${2:-/run/media/$USER/RPI-RP2}"
-        \\dev=/dev/disk/by-label/RPI-RP2
-        \\until [ -d "$mount" ]; do
-        \\  if [ -e "$dev" ] && command -v udisksctl >/dev/null; then udisksctl mount -b "$dev" >/dev/null 2>&1; fi
-        \\  sleep 0.2
-        \\done
-        \\sleep 0.5; cp "$1" "$mount/firmware.uf2" && sync
-        ,
-        "sh",
-    });
-    flash_command.addFileArg(firmware_uf2);
-    // An empty value lets the shell fall back to the Linux udisks mount point for the current user.
-    const default_flash_mount = if (builtin.os.tag == .macos) "/Volumes/RPI-RP2" else "";
-    flash_command.addArg(b.option([]const u8, "flash-mount", "Mounted RP2 bootloader volume") orelse default_flash_mount);
-    flash_command.has_side_effects = true;
-    flash_mount_step.dependOn(&flash_command.step);
-
-    const flash_pt_step = b.step("flash_pt", "Build and flash the firmware with picotool");
-    const flash_pt_command = @import("zigmkay").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
-    flash_pt_step.dependOn(&flash_pt_command.step);
-
-    const flash_step = b.step("flash", "Build and flash the firmware using the host default");
-    if (builtin.os.tag == .macos) {
-        flash_step.dependOn(&flash_pt_command.step);
-    } else {
-        flash_step.dependOn(&flash_command.step);
-    }
+    const flash_step = b.step("flash", "Build and flash the firmware with picotool");
+    const flash_command = @import("zigmkay").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
+    flash_step.dependOn(&flash_command.step);
 }
 
 /// Each firmware gets its own zigmkay/zkeycodes module instances: add_app_import
@@ -151,7 +122,7 @@ fn keyboardOptionDescription(b: *std.Build) []const u8 {
     const joined_samples = std.mem.join(b.allocator, ", ", sample_names[0..]) catch @panic("Failed to build keyboard sample list");
     return std.fmt.allocPrint(
         b.allocator,
-        "Keyboard sample to build/flash (use: zig build -Dkeyboard=<name>, flash: zig build flash -Dkeyboard=<name>, picotool: zig build flash_pt -Dkeyboard=<name>, available: {s})",
+        "Keyboard sample to build/flash (use: zig build -Dkeyboard=<name>, flash: zig build flash -Dkeyboard=<name>, available: {s})",
         .{joined_samples},
     ) catch @panic("Failed to build keyboard option description");
 }
@@ -169,6 +140,5 @@ fn printAvailableSamples() void {
         std.debug.print("  - {s}\n", .{sample.name});
     }
     std.debug.print("zig build -Dkeyboard=<name>\t\tBuild the Firmware\n", .{});
-    std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash using the host default\n", .{});
-    std.debug.print("zig build flash_pt -Dkeyboard=<name>\tBuild & Flash with picotool\n\n", .{});
+    std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash with picotool\n\n", .{});
 }

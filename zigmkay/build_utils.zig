@@ -35,8 +35,10 @@ pub fn add_test_steps(b: *std.Build, zigmkay_module: *std.Build.Module, test_ste
 }
 
 /// Builds and installs the `picotool_flash` host tool so that dependents can
-/// fetch it with `dependency.artifact("picotool_flash")`. `source_path` is the
-/// tool's path relative to the calling package root.
+/// fetch it with `dependency.artifact("picotool_flash")`, and exposes picotool,
+/// built from source, as the named lazy path "picotool". `source_path` is the
+/// tool's path relative to the calling package root, which must declare the
+/// `picotool` dependency.
 pub fn install_picotool_flash(b: *std.Build, source_path: []const u8) void {
     const picotool_flash = b.addExecutable(.{
         .name = "picotool_flash",
@@ -47,6 +49,12 @@ pub fn install_picotool_flash(b: *std.Build, source_path: []const u8) void {
         }),
     });
     b.installArtifact(picotool_flash);
+
+    const picotool_dep = b.dependency("picotool", .{
+        .target = b.graph.host,
+        .optimize = .ReleaseSafe,
+    });
+    b.addNamedLazyPath("picotool", picotool_dep.artifact("picotool").getEmittedBin());
 }
 
 /// Adds an uncached run step that flashes `firmware_uf2` with picotool: it
@@ -57,6 +65,7 @@ pub fn install_picotool_flash(b: *std.Build, source_path: []const u8) void {
 /// or the zigmkay subpackage).
 pub fn addPicotoolFlash(b: *std.Build, dependency: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) *std.Build.Step.Run {
     const flash_command = b.addRunArtifact(dependency.artifact("picotool_flash"));
+    flash_command.addFileArg(dependency.namedLazyPath("picotool"));
     flash_command.addFileArg(firmware_uf2);
     flash_command.has_side_effects = true;
     return flash_command;
