@@ -5,6 +5,7 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .picotool = .{
+            .lazy = true,
             .url = "git+https://github.com/allyourcodebase/picotool.git#d8df33801dbea792128baaab516291720d400a91",
             .hash = "picotool-2.3.1-PtJrRaJNAAA3xRwGctKAdomuKCJXz5UwMOrhzQ_Z2f-e",
         },

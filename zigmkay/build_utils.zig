@@ -50,10 +50,10 @@ pub fn install_picotool_flash(b: *std.Build, source_path: []const u8) void {
     });
     b.installArtifact(picotool_flash);
 
-    const picotool_dep = b.dependency("picotool", .{
+    const picotool_dep = b.lazyDependency("picotool", .{
         .target = b.graph.host,
         .optimize = .ReleaseSafe,
-    });
+    }) orelse return;
     b.addNamedLazyPath("picotool", picotool_dep.artifact("picotool").getEmittedBin());
 }
 

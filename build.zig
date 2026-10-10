@@ -9,7 +9,7 @@ const MicroBuild = microzig.MicroBuild(.{
 });
 
 /// Usage from a downstream build.zig that depends on this repository:
-///     const zigmkay_dep = b.dependency("zigmkay_firmware", .{});
+///     const zigmkay_dep = b.dependency("zigmkay_firmware", .{ .@"flash-tools" = true });
 ///     const flash = @import("zigmkay_firmware").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
 ///     b.step("flash", "Flash with picotool").dependOn(&flash.step);
 pub const addPicotoolFlash = build_utils.addPicotoolFlash;
@@ -23,7 +23,9 @@ pub fn build(b: *std.Build) void {
 
     const test_run_step = b.step("test", "Run unit tests");
     build_utils.add_test_steps(b, zigmkay_mod, test_run_step, "zigmkay/tests");
-    build_utils.install_picotool_flash(b, "zigmkay/tools/picotool_flash.zig");
+    // Portable consumers do not need a native flashing tool or its dependency.
+    if (b.option(bool, "flash-tools", "Build optional picotool flashing tools") orelse false)
+        build_utils.install_picotool_flash(b, "zigmkay/tools/picotool_flash.zig");
 
     if (builtin.os.tag == .macos) {
         const rawhid_monitor = b.addExecutable(.{
