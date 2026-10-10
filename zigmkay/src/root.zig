@@ -6,6 +6,7 @@ pub const telemetry_transport = @import("telemetry_transport.zig");
 pub const matrix_scanning = @import("matrix_scanning.zig");
 pub const processing = @import("processing.zig");
 pub const usb = @import("usb_command_executor.zig");
+pub const usb_reports = @import("usb_reports.zig");
 pub const encoder_scanning = @import("encoder_scanning.zig");
 pub const macros = @import("macros.zig");
 pub const combo = @import("combo.zig");

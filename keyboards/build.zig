@@ -24,6 +24,17 @@ pub fn build(b: *std.Build) void {
     b.addNamedLazyPath("firmware_uf2", uf2);
 
     const tests = b.step("test", "Run host regressions and compile every default firmware");
+    const pinned_usb = b.createModule(.{ .root_source_file = mb.core_dep.path("src/microzig.zig") });
+    const descriptors = b.createModule(.{
+        .root_source_file = b.path("../zigmkay/src/usb_descriptors.zig"),
+        .imports = &.{.{ .name = "microzig", .module = pinned_usb }},
+    });
+    const descriptor_tests = b.addTest(.{ .root_module = b.createModule(.{
+        .root_source_file = b.path("tests/test_usb_descriptors.zig"),
+        .target = b.graph.host,
+        .imports = &.{.{ .name = "usb_descriptors", .module = descriptors }},
+    }) });
+    tests.dependOn(&b.addRunArtifact(descriptor_tests).step);
     const processor = b.createModule(.{ .root_source_file = sources.processor });
     const keycodes = b.createModule(.{ .root_source_file = sources.keycodes, .imports = &.{.{ .name = "zigmkay", .module = processor }} });
     const default_keymap = b.createModule(.{
