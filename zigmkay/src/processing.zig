@@ -1,5 +1,6 @@
 const std = @import("std");
 const core = @import("core.zig");
+const telemetry = @import("telemetry.zig");
 const stats_collector = @import("stats_collector.zig");
 
 pub fn CreateProcessorType(
@@ -10,6 +11,33 @@ pub fn CreateProcessorType(
     comptime custom: *const core.CustomFunctions,
     comptime encoder_actions: []const core.EncoderAction,
     comptime matrix_event_trace: ?core.MatrixEventTrace,
+) type {
+    return CreateProcessorTypeWithObservation(keymap_dimensions, keymap, sides, combos, custom, encoder_actions, matrix_event_trace, false);
+}
+
+/// Explicit v2 observation; legacy diagnostic tracing remains a separate mode.
+pub fn CreateObservedProcessorType(
+    comptime keymap_dimensions: *const core.KeymapDimensions,
+    comptime keymap: *const [keymap_dimensions.layer_count][keymap_dimensions.key_count]?core.KeyDef,
+    comptime sides: *const [keymap_dimensions.key_count]core.Side,
+    comptime combos: []const core.Combo2Def,
+    comptime custom: *const core.CustomFunctions,
+    comptime encoder_actions: []const core.EncoderAction,
+    comptime matrix_event_trace: ?core.MatrixEventTrace,
+) type {
+    if (matrix_event_trace != null) @compileError("V2 observation and legacy matrix tracing must use separate configurations");
+    return CreateProcessorTypeWithObservation(keymap_dimensions, keymap, sides, combos, custom, encoder_actions, matrix_event_trace, true);
+}
+
+fn CreateProcessorTypeWithObservation(
+    comptime keymap_dimensions: *const core.KeymapDimensions,
+    comptime keymap: *const [keymap_dimensions.layer_count][keymap_dimensions.key_count]?core.KeyDef,
+    comptime sides: *const [keymap_dimensions.key_count]core.Side,
+    comptime combos: []const core.Combo2Def,
+    comptime custom: *const core.CustomFunctions,
+    comptime encoder_actions: []const core.EncoderAction,
+    comptime matrix_event_trace: ?core.MatrixEventTrace,
+    comptime observe: bool,
 ) type {
     return struct {
         const Self = @This();
@@ -29,7 +57,46 @@ pub fn CreateProcessorType(
         one_shot_hold_to_enable_before_next_tap: ?core.HoldDef = null,
         one_shot_hold_to_disable_after_next_release: ?core.HoldDef = null,
 
+        observer: if (observe) telemetry.Observer else void = if (observe) .{} else {},
+        observed_pending: if (observe) usize else void = if (observe) 0 else {},
+        last_observed_layers: if (observe) u16 else void = if (observe) 1 else {},
+        last_observed_modifiers: if (observe) u8 else void = if (observe) 0 else {},
+
+        fn observe_inputs(self: *Self) !void {
+            const pending = self.input_matrix_changes.peek_all();
+            if (pending.len < self.observed_pending) return error.InputQueueChanged;
+            for (pending[self.observed_pending..]) |event| {
+                if (event.key_index >= keymap_dimensions.key_count) return error.InvalidKeyIndex;
+                self.observer.emit(.{ .key = .{
+                    .pressed = event.pressed,
+                    .key_index = event.key_index,
+                    .layer = self.layers_activations.get_top_most_active_layer(),
+                    .modifiers = self.output_usb_commands.get_current_modifiers(),
+                } });
+                self.observed_pending += 1;
+            }
+        }
+
+        fn observe_state(self: *Self) void {
+            var active: u16 = 1;
+            for (1..keymap_dimensions.layer_count) |layer| {
+                if (self.layers_activations.is_layer_active(@intCast(layer)))
+                    active |= @as(u16, 1) << @as(u4, @intCast(layer));
+            }
+            const modifiers = self.output_usb_commands.get_current_modifiers();
+            if (active != self.last_observed_layers or modifiers.toByte() != self.last_observed_modifiers) {
+                self.observer.emit(.{ .layers = .{
+                    .active_layers = active,
+                    .highest_layer = self.layers_activations.get_top_most_active_layer(),
+                    .modifiers = modifiers,
+                } });
+                self.last_observed_layers = active;
+                self.last_observed_modifiers = modifiers.toByte();
+            }
+        }
+
         pub fn Process(self: *Self, current_time: core.TimeSinceBoot) !void {
+            if (comptime observe) try self.observe_inputs();
             _ = self.stats.register_tick(current_time);
             on_event(self, core.ProcessorEvent.Tick);
 
@@ -51,12 +118,14 @@ pub fn CreateProcessorType(
                             report_matrix_event(self, event);
                         }
                         try self.input_matrix_changes.dequeue_count(dequeue_info.dequeue_count);
+                        if (comptime observe) self.observed_pending -= dequeue_info.dequeue_count;
                     },
                     .Stop => break,
                 }
             }
 
             try tick_autofire(self, current_time);
+            if (comptime observe) self.observe_state();
         }
 
         /// Best effort: a full output queue must not turn diagnostics into a fatal error.
@@ -158,6 +227,7 @@ pub fn CreateProcessorType(
                                 self.release_map[head_event.key_index] = ReleaseMapEntry.None;
                             },
                             .ReleaseHold => |hold_def| {
+                                if (hold_def.hold.custom) |id| _ = self.output_usb_commands.send_companion_custom(id, false);
                                 on_event(self, .{ .OnHoldExitBefore = .{ .hold = hold_def.hold } });
 
                                 try hold_remove_modifiers_and_layers(self, hold_def.hold);
@@ -266,7 +336,7 @@ pub fn CreateProcessorType(
             on_event(self, .{ .OnTapEnterBefore = .{ .tap = tap } });
             if (tap.key_press) |keycode_fire| {
                 try handle_boot_and_print(self, keycode_fire);
-                try self.output_usb_commands.press_key(keycode_fire);
+                if (!self.output_usb_commands.is_companion_key(keycode_fire)) try self.output_usb_commands.press_key(keycode_fire);
             }
             if (tap.mouse_action) |mouse_action| {
                 try self.output_usb_commands.queue.enqueue(.{ .MouseCommandPressed = mouse_action });
@@ -274,14 +344,18 @@ pub fn CreateProcessorType(
             if (tap.media_key) |media_key| {
                 try self.output_usb_commands.queue.enqueue(.{ .ConsumerKeyPressed = media_key });
             }
+            if (tap.key_press) |keycode_fire| {
+                if (self.output_usb_commands.is_companion_key(keycode_fire)) try self.output_usb_commands.press_key(keycode_fire);
+            }
+            if (tap.custom) |id| _ = self.output_usb_commands.send_companion_custom(id, true);
             on_event(self, .{ .OnTapEnterAfter = .{ .tap = tap } });
         }
 
         fn execute_tap_release(self: *Self, tap: core.TapDef) !void {
             on_event(self, .{ .OnTapExitBefore = .{ .tap = tap } });
             if (tap.key_press) |keycode_fire| {
-                try self.output_usb_commands.release_key(keycode_fire);
-                if (keycode_fire.dead) {
+                if (!self.output_usb_commands.is_companion_key(keycode_fire)) try self.output_usb_commands.release_key(keycode_fire);
+                if (keycode_fire.dead and !self.output_usb_commands.is_companion_key(keycode_fire)) {
                     const space = core.KeyCodeFire{ .tap_keycode = 0x2C };
                     try self.output_usb_commands.tap_key(space);
                 }
@@ -293,6 +367,10 @@ pub fn CreateProcessorType(
             if (tap.media_key) |media_key| {
                 try self.output_usb_commands.queue.enqueue(.{ .ConsumerKeyReleased = media_key });
             }
+            if (tap.key_press) |keycode_fire| {
+                if (self.output_usb_commands.is_companion_key(keycode_fire)) try self.output_usb_commands.release_key(keycode_fire);
+            }
+            if (tap.custom) |id| _ = self.output_usb_commands.send_companion_custom(id, false);
             on_event(self, .{ .OnTapExitAfter = .{ .tap = tap } });
         }
 
@@ -322,6 +400,7 @@ pub fn CreateProcessorType(
         fn decide_hold_decided(self: *Self, hold: core.HoldDef, key_def: core.KeyDef, event: core.MatrixStateChange) !void {
             on_event(self, .{ .OnHoldEnterBefore = .{ .hold = hold } });
             try hold_apply_modifiers_and_layers(self, hold);
+            if (hold.custom) |id| _ = self.output_usb_commands.send_companion_custom(id, true);
 
             var retro_tap: ?core.TapDef = null;
             switch (key_def) {
