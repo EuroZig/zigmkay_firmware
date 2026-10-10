@@ -8,10 +8,13 @@ pub const std_options = microzig.std_options(.{});
 const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
-const rollercole_shared_keymap = @import("keymap.zig");
+const rollercole_shared_keymap = @import("keymap");
+const board_key_count = 36;
+const board_dimensions = @import("keymap_validation").validate(rollercole_shared_keymap, board_key_count, null);
+
 const zigmkay = @import("zigmkay");
 const zkeycodes = @import("zkeycodes");
-const keymap = @import("keymap.zig");
+const keymap = @import("keymap");
 
 // uart
 const uart_rx_pin = gpio.num(1);
@@ -67,10 +70,7 @@ pub fn main() !void {
     @setEvalBranchQuota(10_000);
     _ = pin_config.apply();
 
-    const keymap_dimensions = zigmkay.core.KeymapDimensions{
-        .key_count = keymap.key_count,
-        .layer_count = keymap.keymap.len,
-    };
+    const keymap_dimensions = board_dimensions;
 
     blink_led(1, 300); // Show the user that the keyboard has actually booted up.
 
@@ -90,7 +90,7 @@ pub fn main() !void {
                 },
                 //.combos = rollercole_shared_keymap.combos[0..],
                 //.custom_functions = &rollercole_shared_keymap.custom_functions,
-                //.side_definition = &rollercole_shared_keymap.sides,
+                //.side_definition = &board_sides,
             },
         };
 

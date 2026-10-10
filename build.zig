@@ -13,6 +13,9 @@ const MicroBuild = microzig.MicroBuild(.{
 ///     const flash = @import("zigmkay_firmware").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
 ///     b.step("flash", "Flash with picotool").dependOn(&flash.step);
 pub const addPicotoolFlash = build_utils.addPicotoolFlash;
+pub const boards = @import("keyboards/boards.zig");
+pub const addKeyboardFirmware = @import("keyboards/build_api.zig").addKeyboardFirmware;
+pub const FirmwareSources = @import("keyboards/build_api.zig").Sources;
 
 pub fn build(b: *std.Build) void {
     const zigmkay_mod = b.addModule("zigmkay", .{

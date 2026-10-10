@@ -35,7 +35,16 @@ const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
 
 // Import our keymap definitions from keymap.zig
-const keymap = @import("keymap.zig");
+const keymap = @import("keymap");
+const board_key_count = 38;
+pub const board_sides = [board_key_count]zigmkay.core.Side{
+    .L, .L, .L, .L, .L, .R, .R, .R, .R, .R,
+    .L, .L, .L, .L, .L, .L, .R, .R, .R, .R,
+    .R, .R, .L, .L, .L, .L, .L, .R, .R, .R,
+    .R, .R, .X, .X, .X, .X, .X, .X,
+    // .E,.E TODO Encoders not supported right now
+};
+const board_dimensions = @import("keymap_validation").validate(keymap, board_key_count, &board_sides);
 
 // =============================================================================
 // UART CONFIGURATION (Serial Communication)
@@ -116,7 +125,7 @@ pub const p = pin_config.pins();
 // =============================================================================
 // This array maps KEY POSITIONS (indices 0-39) to GPIO PIN PAIRS (column, row).
 // This tells the firmware which physical switch corresponds to each key index.
-pub const pin_mappings = [keymap.key_count]?[2]usize{
+pub const pin_mappings = [board_key_count]?[2]usize{
                .{ 0, 0 }, .{ 1, 0 }, .{ 2, 0 }, .{ 3, 0 }, .{ 4, 0 },          .{ 0, 4 }, .{ 1, 4 }, .{ 2, 4 }, .{ 3, 4 }, .{ 4, 4 },
     .{ 0, 3 }, .{ 0, 1 }, .{ 1, 1 }, .{ 2, 1 }, .{ 3, 1 }, .{ 4, 1 },          .{ 0, 5 }, .{ 1, 5 }, .{ 2, 5 }, .{ 3, 5 }, .{ 4, 5 }, .{ 4, 7 },
                .{ 0, 2 }, .{ 1, 2 }, .{ 2, 2 }, .{ 3, 2 }, .{ 4, 2 },          .{ 0, 6 }, .{ 1, 6 }, .{ 2, 6 }, .{ 3, 6 }, .{ 4, 6 },
@@ -167,7 +176,7 @@ pub fn main() !void {
     //   - Raw HID communication (companion app telemetry)
 
     // Mandatory
-    comptime var config = zigmkay.loops.GetUnibodyConfigType(&keymap.dimensions){
+    comptime var config = zigmkay.loops.GetUnibodyConfigType(&board_dimensions){
         .config = .{
             .keymap = &keymap.keymap,
             .scanner_settings = &.{
@@ -182,7 +191,7 @@ pub fn main() !void {
 
             .combos = keymap.combos[0..],
             .custom_functions = &keymap.custom_functions,
-            .side_definition = &keymap.sides,
+            .side_definition = &board_sides,
         },
     };
 

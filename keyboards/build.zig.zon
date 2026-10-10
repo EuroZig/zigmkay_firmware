@@ -20,5 +20,9 @@
         "build.zig.zon",
         "examples",
         "my_keyboards",
+        "boards.zig",
+        "build_api.zig",
+        "keymap_validation.zig",
+        "tests",
     },
 }

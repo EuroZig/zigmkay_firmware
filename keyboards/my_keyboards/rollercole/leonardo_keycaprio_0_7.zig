@@ -8,7 +8,11 @@ pub const std_options = microzig.std_options(.{});
 const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
-const rollercole_shared_keymap = @import("shared_keymap_3x5_2.zig");
+const rollercole_shared_keymap = @import("keymap");
+const board_key_count = 34;
+pub const board_sides = [board_key_count]zigmkay.core.Side{ .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .X, .X, .X, .X };
+const board_dimensions = @import("keymap_validation").validate(rollercole_shared_keymap, board_key_count, &board_sides);
+
 const zigmkay = @import("zigmkay");
 const dk = zigmkay.keycodes.dk;
 const core = zigmkay.core;
@@ -45,7 +49,7 @@ pub const p = blk: {
     @setEvalBranchQuota(10_000);
     break :blk pin_config.pins();
 };
-pub const pin_mappings = [rollercole_shared_keymap.key_count]?[2]usize{
+pub const pin_mappings = [board_key_count]?[2]usize{
   .{0,0}, .{1,0}, .{2,0}, .{3,0}, .{4,0},  .{9,4},.{8,4},.{7,4},.{6,4},.{5,4},
   .{0,1}, .{1,1}, .{2,1}, .{3,1}, .{4,1},    .{9,5},.{8,5},.{7,5},.{6,5},.{5,5},
   .{0,2}, .{1,2}, .{2,2}, .{3,2}, .{4,2},    .{9,6},.{8,6},.{7,6},.{6,6},.{5,6},
@@ -74,11 +78,11 @@ pub fn main() !void {
     blink_led(1, 300); // Show the user that the keyboard has actually booted up.
 
     // Mandatory
-    comptime var config = zigmkay.loops.GetUnibodyConfigType(&rollercole_shared_keymap.dimensions){
+    comptime var config = zigmkay.loops.GetUnibodyConfigType(&board_dimensions){
         .config = .{
             .keymap = &rollercole_shared_keymap.keymap,
             .custom_functions = &rollercole_shared_keymap.custom_functions,
-            .side_definition = &rollercole_shared_keymap.sides,
+            .side_definition = &board_sides,
             .combos = rollercole_shared_keymap.combos[0..],
             .scanner_settings = &.{
                 .matrix = .{
