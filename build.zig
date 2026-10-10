@@ -16,6 +16,7 @@ pub const addPicotoolFlash = build_utils.addPicotoolFlash;
 pub const boards = @import("keyboards/boards.zig");
 pub const addKeyboardFirmware = @import("keyboards/build_api.zig").addKeyboardFirmware;
 pub const FirmwareSources = @import("keyboards/build_api.zig").Sources;
+pub const device_protocol_version: u8 = 2;
 
 pub fn build(b: *std.Build) void {
     const zigmkay_mod = b.addModule("zigmkay", .{
