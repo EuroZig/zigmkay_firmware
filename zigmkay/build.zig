@@ -3,6 +3,16 @@ const std = @import("std");
 pub const microzig = @import("microzig");
 const build_utils = @import("build_utils.zig");
 
+pub const add_test_steps = build_utils.add_test_steps;
+
+/// Usage from a downstream build.zig:
+///     const zigmkay_dep = b.dependency("zigmkay", .{});
+///     const flash = @import("zigmkay").addFlash(b, zigmkay_dep, firmware_uf2, null);
+///     b.step("flash", "Flash the firmware").dependOn(&flash.step);
+pub const addFlash = build_utils.addFlash;
+pub const addPicotoolFlash = build_utils.addPicotoolFlash;
+pub const addMountFlash = build_utils.addMountFlash;
+
 const MicroBuild = microzig.MicroBuild(.{
     .rp2xxx = true,
 });
@@ -16,11 +26,5 @@ pub fn build(b: *std.Build) void {
     const test_run_step = b.step("test", "Run unit tests");
     build_utils.add_test_steps(b, zigmkay_mod, test_run_step, "tests");
 
-    build_utils.install_picotool_flash(b, "tools/picotool_flash.zig");
+    build_utils.install_tools(b);
 }
-
-/// Usage from a downstream build.zig:
-///     const zigmkay_dep = b.dependency("zigmkay", .{});
-///     const flash = @import("zigmkay").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
-///     b.step("flash", "Flash with picotool").dependOn(&flash.step);
-pub const addPicotoolFlash = build_utils.addPicotoolFlash;

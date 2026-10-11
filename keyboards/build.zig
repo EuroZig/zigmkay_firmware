@@ -79,9 +79,17 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&keyboard_firmware.exe.step);
     }
 
-    const flash_step = b.step("flash", "Build and flash the firmware with picotool");
-    const flash_command = @import("zigmkay").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
-    flash_step.dependOn(&flash_command.step);
+    const flash_tools = @import("zigmkay");
+    const flash_mount = b.option([]const u8, "flash-mount", "Mount point or volume label of the RP2 bootloader (default: RPI-RP2)");
+
+    const flash_step = b.step("flash", "Build and flash the firmware (Windows: mount based, otherwise picotool)");
+    flash_step.dependOn(&flash_tools.addFlash(b, zigmkay_dep, firmware_uf2, flash_mount).step);
+
+    const flash_pt_step = b.step("flash_pt", "Build and flash the firmware with picotool");
+    flash_pt_step.dependOn(&flash_tools.addPicotoolFlash(b, zigmkay_dep, firmware_uf2).step);
+
+    const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through the mounted RP2 bootloader volume");
+    flash_mount_step.dependOn(&flash_tools.addMountFlash(b, zigmkay_dep, firmware_uf2, flash_mount).step);
 }
 
 /// Each firmware gets its own zigmkay/zkeycodes module instances: add_app_import
@@ -122,7 +130,7 @@ fn keyboardOptionDescription(b: *std.Build) []const u8 {
     const joined_samples = std.mem.join(b.allocator, ", ", sample_names[0..]) catch @panic("Failed to build keyboard sample list");
     return std.fmt.allocPrint(
         b.allocator,
-        "Keyboard sample to build/flash (use: zig build -Dkeyboard=<name>, flash: zig build flash -Dkeyboard=<name>, available: {s})",
+        "Keyboard sample to build/flash (use: zig build -Dkeyboard=<name>, flash: zig build flash -Dkeyboard=<name>, picotool: zig build flash_pt, mount: zig build flash_mount [-Dflash-mount=<path|label>], available: {s})",
         .{joined_samples},
     ) catch @panic("Failed to build keyboard option description");
 }
@@ -140,5 +148,7 @@ fn printAvailableSamples() void {
         std.debug.print("  - {s}\n", .{sample.name});
     }
     std.debug.print("zig build -Dkeyboard=<name>\t\tBuild the Firmware\n", .{});
-    std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash with picotool\n\n", .{});
+    std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash using the host default\n", .{});
+    std.debug.print("zig build flash_pt -Dkeyboard=<name>\tBuild & Flash with picotool\n", .{});
+    std.debug.print("zig build flash_mount -Dkeyboard=<name>\tBuild & Flash through the mounted RP2 volume\n\n", .{});
 }

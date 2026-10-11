@@ -9,7 +9,7 @@ pub fn main(init: std.process.Init) !void {
     var args = try std.process.Args.Iterator.initAllocator(init.minimal.args, allocator);
     defer args.deinit();
     _ = args.next();
-    const usage = "usage: picotool_flash <picotool> <firmware.uf2>";
+    const usage = "usage: flash_picotool <picotool> <firmware.uf2>";
     const picotool = args.next() orelse std.process.fatal(usage, .{});
     const firmware_path = args.next() orelse std.process.fatal(usage, .{});
     if (args.next() != null) std.process.fatal(usage, .{});
