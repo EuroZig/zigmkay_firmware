@@ -44,10 +44,15 @@ pub fn addKeyboardFirmware(
         .root_source_file = sources.keyboards.path(b, "keymap_validation.zig"),
         .imports = &.{.{ .name = "zigmkay", .module = processor }},
     });
+    const descriptors = b.createModule(.{
+        .root_source_file = sources.keyboards.path(b, "processing_descriptors.zig"),
+        .imports = &.{.{ .name = "zigmkay", .module = processor }},
+    });
     firmware.add_app_import("zigmkay", processor, .{ .depend_on_microzig = true });
     firmware.add_app_import("zkeycodes", keycodes, .{ .depend_on_microzig = true });
     firmware.add_app_import("keymap", keymap, .{ .depend_on_microzig = true });
     firmware.add_app_import("keymap_validation", validation, .{});
+    firmware.add_app_import("processing-descriptors", descriptors, .{});
     const options = b.addOptions();
     options.addOption(bool, "companion_enabled", sources.companion_enabled);
     firmware.add_app_import("firmware-options", options.createModule(), .{});

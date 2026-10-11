@@ -19,6 +19,7 @@ pub const FirmwareSources = @import("keyboards/build_api.zig").Sources;
 pub const device_protocol_version: u8 = 2;
 pub const default_keymap_catalog_version: u16 = 1;
 pub const flash_wrapper_contract_version: u16 = 1;
+pub const processing_descriptor_version: u16 = 1;
 
 pub fn build(b: *std.Build) void {
     const zigmkay_mod = b.addModule("zigmkay", .{

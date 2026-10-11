@@ -9,7 +9,8 @@ const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
 const rollercole_shared_keymap = @import("keymap");
-const board_key_count = 36;
+const processing = @import("processing-descriptors").find("dasbob").?;
+const board_key_count = processing.key_count;
 const board_dimensions = @import("keymap_validation").validate(rollercole_shared_keymap, board_key_count, null);
 
 const zigmkay = @import("zigmkay");

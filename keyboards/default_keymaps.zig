@@ -1,6 +1,7 @@
 //! Portable default keymap inventory. One source module owns shared relative
 //! imports; downstream consumers need neither MCU entrypoints nor local copies.
 pub const boards = @import("boards.zig");
+pub const processing_descriptors = @import("processing_descriptors.zig");
 const std = @import("std");
 // Zig requires literal import operands. These are source bindings, not a second
 // board inventory; selector order and multiplicity come only from boards.zig.

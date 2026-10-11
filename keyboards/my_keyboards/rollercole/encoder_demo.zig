@@ -29,7 +29,8 @@ pub const pin_config = rp2xxx.pins.GlobalConfiguration{
 pub const p = pin_config.pins();
 
 const supplied_keymap = @import("keymap");
-const dimensions = @import("keymap_validation").validate(supplied_keymap, 1, null);
+const processing = @import("processing-descriptors").find("encoder_demo").?;
+const dimensions = @import("keymap_validation").validate(supplied_keymap, processing.key_count, null);
 pub const no_pin_mappings = [dimensions.key_count]?[2]usize{ .{0,0} };
 
 pub const scanner_settings = zigmkay.matrix_scanning.ScannerSettings{
@@ -46,7 +47,7 @@ pub fn main() !void {
     };
 }
 
-const default_encoder_actions = [_]core.EncoderAction{
+const default_encoder_actions = [processing.encoder_actions]core.EncoderAction{
     .{ .tap = core.TapDef{ .media_key = .VolumeUp } },
     .{ .tap = core.TapDef{ .media_key = .VolumeDown } },
 };

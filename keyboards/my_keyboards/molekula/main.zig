@@ -36,14 +36,9 @@ const gpio = rp2xxx.gpio;
 
 // Import our keymap definitions from keymap.zig
 const keymap = @import("keymap");
-const board_key_count = 38;
-pub const board_sides = [board_key_count]zigmkay.core.Side{
-    .L, .L, .L, .L, .L, .R, .R, .R, .R, .R,
-    .L, .L, .L, .L, .L, .L, .R, .R, .R, .R,
-    .R, .R, .L, .L, .L, .L, .L, .R, .R, .R,
-    .R, .R, .X, .X, .X, .X, .X, .X,
-    // .E,.E TODO Encoders not supported right now
-};
+const processing = @import("processing-descriptors").find("molekula").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
 const board_dimensions = @import("keymap_validation").validate(keymap, board_key_count, &board_sides);
 
 // =============================================================================

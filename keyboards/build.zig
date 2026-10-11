@@ -74,6 +74,12 @@ pub fn build(b: *std.Build) void {
     }
     const inventory = b.addTest(.{ .root_module = b.createModule(.{ .root_source_file = b.path("boards.zig"), .target = b.graph.host }) });
     tests.dependOn(&b.addRunArtifact(inventory).step);
+    const processing_contract = b.addTest(.{ .root_module = b.createModule(.{
+        .root_source_file = b.path("processing_descriptors.zig"),
+        .target = b.graph.host,
+        .imports = &.{.{ .name = "zigmkay", .module = processor }},
+    }) });
+    tests.dependOn(&b.addRunArtifact(processing_contract).step);
     var default_sources = sources;
     default_sources.companion_enabled = false;
     for (boards.entries) |entry| {

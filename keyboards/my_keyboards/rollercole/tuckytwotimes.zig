@@ -9,8 +9,9 @@ const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
 const rollercole_shared_keymap = @import("keymap");
-const board_key_count = 30;
-pub const board_sides = [board_key_count]zigmkay.core.Side{ .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .R, .R, .R, .R, .X, .X };
+const processing = @import("processing-descriptors").find("tuckytwotimes").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
 const board_dimensions = @import("keymap_validation").validate(rollercole_shared_keymap, board_key_count, &board_sides);
 
 const zigmkay = @import("zigmkay");
@@ -56,7 +57,7 @@ pub const pin_config = rp2xxx.pins.GlobalConfiguration{
     .GPIO8 = .{ .name = "GP8", .direction = .in, .pull = .up},
 };
 
-const default_encoder_actions = [_]core.EncoderAction{
+const default_encoder_actions = [processing.encoder_actions]core.EncoderAction{
     .{ .tap = core.TapDef{ .media_key = .VolumeUp } },
     .{ .tap = core.TapDef{ .media_key = .VolumeDown } },
     .{ .tap = core.TapDef{ .key_press = .{ .tap_keycode = 10 } } },

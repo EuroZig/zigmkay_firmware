@@ -9,8 +9,9 @@ const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
 const rollercole_shared_keymap = @import("keymap");
-const board_key_count = 30;
-pub const board_sides = [board_key_count]zigmkay.core.Side{ .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .R, .R, .R, .R, .X, .X };
+const processing = @import("processing-descriptors").find("lk2").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
 const board_dimensions = @import("keymap_validation").validate(rollercole_shared_keymap, board_key_count, &board_sides);
 
 const zigmkay = @import("zigmkay");

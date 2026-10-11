@@ -1,8 +1,9 @@
 const std = @import("std");
 
 const keymap = @import("keymap");
-const board_key_count = 30;
-pub const board_sides = [board_key_count]zigmkay.core.Side{ .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .L, .R, .R, .R, .R, .R, .L, .L, .L, .L, .R, .R, .R, .R, .X, .X };
+const processing = @import("processing-descriptors").find("clackychan_colemak").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
 const board_dimensions = @import("keymap_validation").validate(keymap, board_key_count, &board_sides);
 
 const zigmkay = @import("zigmkay");
