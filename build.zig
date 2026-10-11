@@ -18,6 +18,7 @@ pub const addKeyboardFirmware = @import("keyboards/build_api.zig").addKeyboardFi
 pub const FirmwareSources = @import("keyboards/build_api.zig").Sources;
 pub const device_protocol_version: u8 = 2;
 pub const default_keymap_catalog_version: u16 = 1;
+pub const flash_wrapper_contract_version: u16 = 1;
 
 pub fn build(b: *std.Build) void {
     const zigmkay_mod = b.addModule("zigmkay", .{
@@ -36,6 +37,7 @@ pub fn build(b: *std.Build) void {
 
     const test_run_step = b.step("test", "Run unit tests");
     build_utils.add_test_steps(b, zigmkay_mod, test_run_step, "zigmkay/tests");
+    build_utils.add_picotool_tests(b, "zigmkay/tools", test_run_step);
     // Portable consumers do not need a native flashing tool or its dependency.
     if (b.option(bool, "flash-tools", "Build optional picotool flashing tools") orelse false)
         build_utils.install_picotool_flash(b, "zigmkay/tools/picotool_flash.zig");

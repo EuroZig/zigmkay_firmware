@@ -1,5 +1,35 @@
 const std = @import("std");
 
+/// Offline wrapper tests use a Zig fixture executable and never resolve picotool.
+pub fn add_picotool_tests(b: *std.Build, tool_dir: []const u8, test_step: *std.Build.Step) void {
+    const wrapper_module = b.createModule(.{
+        .root_source_file = b.path(b.pathJoin(&.{ tool_dir, "picotool_flash.zig" })),
+        .target = b.graph.host,
+    });
+    const wrapper = b.addExecutable(.{ .name = "picotool_flash-test-wrapper", .root_module = wrapper_module });
+    const fixture = b.addExecutable(.{
+        .name = "picotool-offline-fixture",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(b.pathJoin(&.{ tool_dir, "picotool_fixture.zig" })),
+            .target = b.graph.host,
+            .link_libc = true,
+        }),
+    });
+    const options = b.addOptions();
+    options.addOptionPath("fixture", fixture.getEmittedBin());
+    options.addOptionPath("wrapper", wrapper.getEmittedBin());
+    const tests = b.addTest(.{ .root_module = b.createModule(.{
+        .root_source_file = b.path(b.pathJoin(&.{ tool_dir, "test_picotool_flash.zig" })),
+        .target = b.graph.host,
+        .imports = &.{.{ .name = "flash", .module = wrapper_module }},
+    }) });
+    tests.root_module.addOptions("options", options);
+    const run = b.addRunArtifact(tests);
+    const step = b.step("test-picotool", "Test flash wrapper offline without USB or picotool");
+    step.dependOn(&run.step);
+    test_step.dependOn(&run.step);
+}
+
 pub fn add_test_steps(b: *std.Build, zigmkay_module: *std.Build.Module, test_step: *std.Build.Step, test_dir: []const u8) void {
     const target = b.standardTargetOptions(.{});
 
@@ -54,7 +84,9 @@ pub fn install_picotool_flash(b: *std.Build, source_path: []const u8) void {
         .target = b.graph.host,
         .optimize = .ReleaseSafe,
     }) orelse return;
-    b.addNamedLazyPath("picotool", picotool_dep.artifact("picotool").getEmittedBin());
+    const picotool = picotool_dep.artifact("picotool");
+    b.addNamedLazyPath("picotool", picotool.getEmittedBin());
+    b.installArtifact(picotool);
 }
 
 /// Adds an uncached run step that flashes `firmware_uf2` with picotool: it

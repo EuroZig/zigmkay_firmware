@@ -15,6 +15,7 @@ pub fn build(b: *std.Build) void {
     });
     const test_run_step = b.step("test", "Run unit tests");
     build_utils.add_test_steps(b, zigmkay_mod, test_run_step, "tests");
+    build_utils.add_picotool_tests(b, "tools", test_run_step);
 
     if (b.option(bool, "flash-tools", "Build optional picotool flashing tools") orelse false)
         build_utils.install_picotool_flash(b, "tools/picotool_flash.zig");
@@ -25,3 +26,4 @@ pub fn build(b: *std.Build) void {
 ///     const flash = @import("zigmkay").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
 ///     b.step("flash", "Flash with picotool").dependOn(&flash.step);
 pub const addPicotoolFlash = build_utils.addPicotoolFlash;
+pub const flash_wrapper_contract_version: u16 = 1;

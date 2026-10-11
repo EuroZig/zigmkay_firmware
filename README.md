@@ -1,6 +1,9 @@
 # Welcome
 ZigMkay is a keyboard firmware made in zig. You also configure your own keymaps in zig. 
 
+Optional firmware flashing uses the [bounded picotool wrapper](zigmkay/tools/picotool_flash.md).
+Tool preparation and offline tests do not access devices.
+
 ## Getting started
 1. Install zig on your machine. Ensure you can run "zig version" and that it spits out 0.17.0. These is a shell.nix which will show all needed dependencies over time.
 
