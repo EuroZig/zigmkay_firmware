@@ -79,17 +79,7 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&keyboard_firmware.exe.step);
     }
 
-    const flash_tools = @import("zigmkay");
-    const flash_mount = b.option([]const u8, "flash-mount", "Mount point or volume label of the RP2 bootloader (default: RPI-RP2)");
-
-    const flash_step = b.step("flash", "Build and flash the firmware (Windows: mount based, otherwise picotool)");
-    flash_step.dependOn(&flash_tools.addFlash(b, zigmkay_dep, firmware_uf2, flash_mount).step);
-
-    const flash_pt_step = b.step("flash_pt", "Build and flash the firmware with picotool");
-    flash_pt_step.dependOn(&flash_tools.addPicotoolFlash(b, zigmkay_dep, firmware_uf2).step);
-
-    const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through the mounted RP2 bootloader volume");
-    flash_mount_step.dependOn(&flash_tools.addMountFlash(b, zigmkay_dep, firmware_uf2, flash_mount).step);
+    _ = @import("zigmkay").addFlashSteps(b, zigmkay_dep, firmware_uf2);
 }
 
 /// Each firmware gets its own zigmkay/zkeycodes module instances: add_app_import

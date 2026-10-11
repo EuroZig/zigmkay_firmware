@@ -7,8 +7,11 @@ pub const add_test_steps = build_utils.add_test_steps;
 
 /// Usage from a downstream build.zig:
 ///     const zigmkay_dep = b.dependency("zigmkay", .{});
-///     const flash = @import("zigmkay").addFlash(b, zigmkay_dep, firmware_uf2, null);
-///     b.step("flash", "Flash the firmware").dependOn(&flash.step);
+///     _ = @import("zigmkay").addFlashSteps(b, zigmkay_dep, firmware_uf2);
+/// This adds the `flash`, `flash_pt` and `flash_mount` steps. The single
+/// run steps below are for packages that want their own step layout.
+pub const FlashSteps = build_utils.FlashSteps;
+pub const addFlashSteps = build_utils.addFlashSteps;
 pub const addFlash = build_utils.addFlash;
 pub const addPicotoolFlash = build_utils.addPicotoolFlash;
 pub const addMountFlash = build_utils.addMountFlash;

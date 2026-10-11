@@ -8,6 +8,18 @@ const MicroBuild = microzig.MicroBuild(.{
     .rp2xxx = true,
 });
 
+pub const FlashSteps = zigmkay_build.FlashSteps;
+
+/// Adds the `flash`, `flash_pt` and `flash_mount` steps and the
+/// `-Dflash-mount` option for `firmware_uf2`. `firmware_dep` is this package
+/// (zigmkay_firmware) as a dependency of the calling package:
+///     const firmware_dep = b.dependency("zigmkay_firmware", .{});
+///     _ = @import("zigmkay_firmware").addFlashSteps(b, firmware_dep, firmware_uf2);
+pub fn addFlashSteps(b: *std.Build, firmware_dep: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) FlashSteps {
+    const zigmkay_dep = firmware_dep.builder.dependency("zigmkay", .{});
+    return zigmkay_build.addFlashSteps(b, zigmkay_dep, firmware_uf2);
+}
+
 pub fn build(b: *std.Build) void {
     const zigmkay_mod = b.addModule("zigmkay", .{
         .root_source_file = .{

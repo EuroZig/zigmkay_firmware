@@ -105,3 +105,30 @@ pub fn addFlash(b: *std.Build, dependency: *std.Build.Dependency, firmware_uf2: 
         else => addPicotoolFlash(b, dependency, firmware_uf2),
     };
 }
+
+pub const FlashSteps = struct {
+    /// Host default: mount based on Windows, picotool everywhere else.
+    flash: *std.Build.Step,
+    flash_pt: *std.Build.Step,
+    flash_mount: *std.Build.Step,
+};
+
+/// Adds the `flash`, `flash_pt` and `flash_mount` top level steps for
+/// `firmware_uf2`, plus the `-Dflash-mount=<path|label>` option, so the calling
+/// package must not declare that option itself. The UF2 must carry the RP2040
+/// family ID. `dependency` is the zigmkay package as a dependency of the
+/// calling package.
+pub fn addFlashSteps(b: *std.Build, dependency: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) FlashSteps {
+    const flash_mount = b.option([]const u8, "flash-mount", "Mount point or volume label of the RP2 bootloader (default: RPI-RP2)");
+
+    const flash_step = b.step("flash", "Build and flash the firmware (Windows: mount based, otherwise picotool)");
+    flash_step.dependOn(&addFlash(b, dependency, firmware_uf2, flash_mount).step);
+
+    const flash_pt_step = b.step("flash_pt", "Build and flash the firmware with picotool");
+    flash_pt_step.dependOn(&addPicotoolFlash(b, dependency, firmware_uf2).step);
+
+    const flash_mount_step = b.step("flash_mount", "Build and flash the firmware through the mounted RP2 bootloader volume");
+    flash_mount_step.dependOn(&addMountFlash(b, dependency, firmware_uf2, flash_mount).step);
+
+    return .{ .flash = flash_step, .flash_pt = flash_pt_step, .flash_mount = flash_mount_step };
+}
