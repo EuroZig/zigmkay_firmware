@@ -12,6 +12,9 @@ const microzig = @import("microzig");
 const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const UartClient = @import("split_communication.zig").UartClient;
+const protocol = @import("device_protocol.zig");
+const Transport = @import("telemetry_transport.zig").Transport;
+const usb_if = @import("usb_if.zig");
 
 fn CreatePrimaryConfig(comptime dimensions: *const core.KeymapDimensions) type {
     return struct {
@@ -33,6 +36,8 @@ fn CreatePrimaryConfig(comptime dimensions: *const core.KeymapDimensions) type {
         encoder_pin_configs: []encoder_scanning.EncoderPinConfig = &.{},
         encoder_actions: []core.EncoderAction = &.{},
         matrix_event_trace: ?core.MatrixEventTrace = null,
+        /// Explicit, canonical identity of the compiled keymap; null disables v2.
+        companion_identity: ?protocol.Identity = null,
     };
 }
 
@@ -89,11 +94,26 @@ fn run_primary_internal(
     var encoder_scanner = comptime encoder_scanning.CreateEncoderScannerType(config.encoder_pin_configs){};
 
     // Processing
-    var processor = processing.CreateProcessorType(dimensions, config.keymap, config.side_definition, config.combos, config.custom_functions, config.encoder_actions, config.matrix_event_trace){
+    const observed = config.companion_identity != null;
+    if (observed) {
+        const identity = config.companion_identity.?;
+        if (identity.dimensions.key_count != dimensions.key_count or identity.dimensions.layer_count != dimensions.layer_count)
+            @compileError("Companion identity dimensions must match the compiled keymap");
+    }
+    const Processor = if (observed)
+        processing.CreateObservedProcessorType(dimensions, config.keymap, config.side_definition, config.combos, config.custom_functions, config.encoder_actions, config.matrix_event_trace)
+    else
+        processing.CreateProcessorType(dimensions, config.keymap, config.side_definition, config.combos, config.custom_functions, config.encoder_actions, config.matrix_event_trace);
+    var transport: if (observed) Transport else void = if (observed) Transport.init(config.companion_identity.?) else {};
+    var processor = Processor{
         .input_matrix_changes = &matrix_change_queue,
         .output_usb_commands = &usb_command_queue,
         .encoder_event_changes = &encoder_change_queue,
     };
+    if (observed) {
+        processor.observer.sink = transport.sink();
+        usb_command_queue.companion_signals = transport.signalSink();
+    }
 
     // uart byte queue
     var uart_receiver = split_protocol.UartReceiveHelper{};
@@ -116,6 +136,17 @@ fn run_primary_internal(
 
         // Execute actions: send usb commands to the host
         try usb_command_executor.HouseKeepAndProcessCommands(&usb_command_queue, current_time);
+        if (observed) {
+            // USB polling above makes one bounded command available. Process it
+            // after the processor cut, then attempt at most one report send.
+            if (usb_if.raw_connected()) {
+                if (usb_if.receive_raw_report()) |report| transport.receive(&report);
+                transport.boundary();
+                transport.pump(.{ .context = &transport, .send = usb_if.try_send_raw_report });
+            } else {
+                transport.disconnect();
+            }
+        }
     }
 }
 

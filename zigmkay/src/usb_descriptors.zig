@@ -1,5 +1,5 @@
 //! HID definitions shared by the device and pinned-stack descriptor checks.
-const usb = @import("microzig").core.usb;
+pub const usb = @import("microzig").core.usb;
 const reports = @import("usb_reports.zig");
 pub const KeyboardInReport = reports.KeyboardInReport;
 pub const KeyboardOutReport = reports.KeyboardOutReport;
@@ -129,7 +129,7 @@ pub const Mouse = usb.drivers.hid.InterruptDriver(.{
 pub const RawHidReport = [32]u8;
 
 // HID Interrupt Driver for the dedicated 32-byte bidirectional RAWHID channel (Companion App Telemetry)
-pub const RawHid = usb.drivers.hid.InterruptDriver(.{
+pub const RawHid = @import("strict_rawhid.zig").Driver(usb.drivers.hid.InterruptDriver(.{
     .subclass = .Unspecified,
     .protocol = .NoneRequired,
     .report_descriptor = &.{
@@ -156,4 +156,4 @@ pub const RawHid = usb.drivers.hid.InterruptDriver(.{
     },
     .InReport = RawHidReport,
     .OutReport = RawHidReport,
-});
+}));

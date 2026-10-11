@@ -98,3 +98,17 @@ pub fn send_raw_report(report: *const RawHidReport) void {
         _ = drivers.rawhid.send_report(report);
     }
 }
+
+pub fn receive_raw_report() ?RawHidReport {
+    if (usb_controller.drivers()) |drivers| return drivers.rawhid.receive_report();
+    return null;
+}
+
+pub fn raw_connected() bool {
+    return usb_controller.drivers() != null;
+}
+
+pub fn try_send_raw_report(_: *anyopaque, report: *const RawHidReport) bool {
+    if (usb_controller.drivers()) |drivers| return drivers.rawhid.send_report(report);
+    return false;
+}
