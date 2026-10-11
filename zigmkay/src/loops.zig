@@ -120,6 +120,7 @@ fn run_primary_internal(
 
     // USB events
     const usb_command_executor = usb.CreateAndInitUsbCommandExecutor();
+    if (observed) usb_if.attach_telemetry(&transport);
     while (true) {
         // Detect local changes
         const current_time = core.TimeSinceBoot{ .time_since_boot_us = time.get_time_since_boot().to_us() };
@@ -140,7 +141,6 @@ fn run_primary_internal(
             // USB polling above makes one bounded command available. Process it
             // after the processor cut, then attempt at most one report send.
             if (usb_if.raw_connected()) {
-                if (usb_if.receive_raw_report()) |report| transport.receive(&report);
                 transport.boundary();
                 transport.pump(.{ .context = &transport, .send = usb_if.try_send_raw_report });
             } else {

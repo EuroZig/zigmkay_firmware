@@ -38,12 +38,14 @@ pub fn Driver(comptime Base: type) type {
 
         pub fn receive_report(self: *Self) ?[32]u8 {
             if (!self.base.rx_ready.swap(false, .seq_cst)) return null;
-            var report: [32]u8 = @splat(0);
+            // Read up to a full USB packet so a truncating DeviceInterface
+            // cannot disguise overlength as a valid 32-byte command.
+            var bytes: [64]u8 = @splat(0);
             const ep = self.base.descriptor.ep_out.endpoint.num;
-            const len = self.base.device.ep_readv(ep, &.{std.mem.asBytes(&report)});
+            const len = self.base.device.ep_readv(ep, &.{&bytes});
             self.base.device.ep_listen(ep, @intCast(self.base.descriptor.ep_out.max_packet_size.native()));
-            if (len != report.len) return null;
-            return report;
+            if (len != 32) return null;
+            return bytes[0..32].*;
         }
     };
 }

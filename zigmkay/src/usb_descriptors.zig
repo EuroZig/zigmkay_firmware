@@ -1,5 +1,11 @@
 //! HID definitions shared by the device and pinned-stack descriptor checks.
 pub const usb = @import("microzig").core.usb;
+pub const configuration = @import("usb_configuration.zig");
+pub const wire = @import("usb_descriptor_bytes.zig");
+pub const control = @import("usb_control.zig");
+pub const requests = @import("usb_requests.zig");
+pub const protocol = @import("device_protocol.zig");
+pub const Transport = @import("telemetry_transport.zig").Transport;
 const reports = @import("usb_reports.zig");
 pub const KeyboardInReport = reports.KeyboardInReport;
 pub const KeyboardOutReport = reports.KeyboardOutReport;
