@@ -75,6 +75,7 @@ pub fn main() !void {
         comptime var config = zigmkay.loops.GetPrimarySideConfigType(&board_dimensions){
             .config = .{
                 .keymap = &rollercole_shared_keymap.keymap,
+                .companion_identity = @import("keymap_validation").companionIdentity(rollercole_shared_keymap, @import("firmware-options").companion_enabled),
                 .combos = rollercole_shared_keymap.combos[0..],
                 .scanner_settings = &.{
                     .matrix = .{

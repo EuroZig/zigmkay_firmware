@@ -66,6 +66,7 @@ pub fn run() !void {
     comptime var config = zigmkay.loops.GetUnibodyConfigType(&dimensions){
         .config = .{
             .keymap = &supplied_keymap.keymap,
+            .companion_identity = @import("keymap_validation").companionIdentity(supplied_keymap, @import("firmware-options").companion_enabled),
             .scanner_settings = &.{
                 .matrix = .{
                     .pin_cols = pins_cols[0..],

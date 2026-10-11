@@ -9,6 +9,7 @@ pub fn build(b: *std.Build) void {
     const selected = b.option([]const u8, "keyboard", "Firmware selector from boards.zig") orelse boards.entries[0].name;
     const board = boards.find(selected) orelse std.debug.panic("Unknown keyboard selector: {s}", .{selected});
     const keymap_path = b.option([]const u8, "keymap", "Explicit supplied keymap source path (selected board only)");
+    const companion_enabled = b.option(bool, "companion", "Enable telemetry with the supplied keymap's canonical identity") orelse false;
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
     const mz_dep = b.dependency("microzig", .{});
     const mb = MicroBuild.init(b, mz_dep) orelse return;
@@ -17,6 +18,7 @@ pub fn build(b: *std.Build) void {
         .keyboards = b.path("."),
         .processor = b.path("../zigmkay/src/root.zig"),
         .keycodes = b.path("../zkeycodes/root.zig"),
+        .companion_enabled = companion_enabled,
     };
     const firmware = addKeyboardFirmware(b, mb, &target, optimize, "zigmkay_firmware", board, sources, if (keymap_path) |path| .{ .cwd_relative = path } else null);
     mb.install_firmware(firmware, .{});
@@ -56,6 +58,7 @@ pub fn build(b: *std.Build) void {
     const rejected_sources = b.addWriteFiles();
     const validator_module = validation.root_module;
     for ([_]struct { name: []const u8, body: []const u8, message: []const u8 }{
+        .{ .name = "missing-companion-identity", .body = "comptime { _ = validator.companionIdentity(struct {}, true); }", .message = "Companion telemetry requires a supplied canonical keymap identity" },
         .{ .name = "wrong-width", .body = "const Fixture = struct { pub const keymap = [1][1]?core.KeyDef{.{null}}; }; comptime { _ = validator.validate(Fixture, 2, null); }", .message = "Keymap key count does not match board wiring" },
         .{ .name = "wrong-sides", .body = "const Fixture = struct { pub const keymap = [1][2]?core.KeyDef{.{null, null}}; pub const sides = [2]core.Side{.R, .L}; }; comptime { _ = validator.validate(Fixture, 2, &.{.L, .R}); }", .message = "Keymap sides differ from board side ownership" },
         .{ .name = "wrong-encoder-slots", .body = "const Fixture = struct { pub const encoder_actions = [1]core.EncoderAction{.{.tap=.{.media_key=.VolumeUp}}}; }; comptime { _ = validator.encoderActions(Fixture, [2]core.EncoderAction{.{.tap=.{.media_key=.VolumeUp}}, .{.tap=.{.media_key=.VolumeDown}}}); }", .message = "Encoder action slot count does not match board wiring" },
@@ -71,8 +74,36 @@ pub fn build(b: *std.Build) void {
     }
     const inventory = b.addTest(.{ .root_module = b.createModule(.{ .root_source_file = b.path("boards.zig"), .target = b.graph.host }) });
     tests.dependOn(&b.addRunArtifact(inventory).step);
+    var default_sources = sources;
+    default_sources.companion_enabled = false;
     for (boards.entries) |entry| {
-        const item = addKeyboardFirmware(b, mb, &target, optimize, entry.name, entry, sources, null);
+        const item = addKeyboardFirmware(b, mb, &target, optimize, entry.name, entry, default_sources, null);
+        tests.dependOn(&item.exe.step);
+    }
+
+    const fixtures = b.addWriteFiles();
+    var observed_sources = sources;
+    observed_sources.companion_enabled = true;
+    for ([_]struct { board: []const u8, keys: usize, encoders: usize }{
+        .{ .board = "lk7", .keys = 34, .encoders = 0 },
+        .{ .board = "dasbob", .keys = 36, .encoders = 0 },
+        .{ .board = "encoder_demo", .keys = 1, .encoders = 2 },
+    }) |fixture| {
+        const source = fixtures.add(b.fmt("observed-{s}.zig", .{fixture.board}), b.fmt(
+            \\const core = @import("zigmkay").core;
+            \\pub const keymap = [1][{d}]?core.KeyDef{{ @splat(null) }};
+            \\pub const combos = [_]core.Combo2Def{{}};
+            \\pub const custom_functions: core.CustomFunctions = .{{ .on_event = null }};
+            \\pub const encoder_actions: [{d}]core.EncoderAction = @splat(.{{ .tap = .{{ .media_key = .VolumeDown }} }});
+            \\pub fn identity(comptime protocol: type) protocol.Identity {{
+            \\    return protocol.computeIdentity(.{{ .board_id = .{{'f','i','x','t','u','r','e',0}}, .profile_id = .{{'o','b','s','e','r','v','e',0}},
+            \\        .dimensions = .{{ .key_count = {d}, .layer_count = 1 }}, .keys = &keymap[0],
+            \\        .sides = &@as([{d}]core.Side, @splat(.X)), .combos = &combos,
+            \\        .encoders = &encoder_actions, .callbacks = &.{{}} }}) catch unreachable;
+            \\}}
+            \\
+        , .{ fixture.keys, fixture.encoders, fixture.keys, fixture.keys }));
+        const item = addKeyboardFirmware(b, mb, &target, optimize, b.fmt("observed-{s}", .{fixture.board}), boards.find(fixture.board).?, observed_sources, source);
         tests.dependOn(&item.exe.step);
     }
 

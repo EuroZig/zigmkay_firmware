@@ -82,6 +82,7 @@ pub fn main() !void {
         comptime var config = zigmkay.loops.GetPrimarySideConfigType(&keymap_dimensions){
             .config = .{
                 .keymap = &keymap.keymap,
+                .companion_identity = @import("keymap_validation").companionIdentity(keymap, @import("firmware-options").companion_enabled),
                 .scanner_settings = &.{
                     .direct_wiring = .{
                         .debounce = .{ .ms = 50 },

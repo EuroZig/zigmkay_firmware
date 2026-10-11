@@ -81,6 +81,7 @@ pub fn main() !void {
     comptime var config = zigmkay.loops.GetUnibodyConfigType(&board_dimensions){
         .config = .{
             .keymap = &rollercole_shared_keymap.keymap,
+            .companion_identity = @import("keymap_validation").companionIdentity(rollercole_shared_keymap, @import("firmware-options").companion_enabled),
             .custom_functions = &rollercole_shared_keymap.custom_functions,
             .side_definition = &board_sides,
             .combos = rollercole_shared_keymap.combos[0..],

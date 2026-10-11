@@ -5,6 +5,8 @@ pub const Sources = struct {
     keyboards: std.Build.LazyPath,
     processor: std.Build.LazyPath,
     keycodes: std.Build.LazyPath,
+    /// Explicit development/build input. Defaults do not enable telemetry.
+    companion_enabled: bool = false,
 };
 
 /// Build with authoritative firmware wiring and an optional downstream keymap.
@@ -46,5 +48,8 @@ pub fn addKeyboardFirmware(
     firmware.add_app_import("zkeycodes", keycodes, .{ .depend_on_microzig = true });
     firmware.add_app_import("keymap", keymap, .{ .depend_on_microzig = true });
     firmware.add_app_import("keymap_validation", validation, .{});
+    const options = b.addOptions();
+    options.addOption(bool, "companion_enabled", sources.companion_enabled);
+    firmware.add_app_import("firmware-options", options.createModule(), .{});
     return firmware;
 }

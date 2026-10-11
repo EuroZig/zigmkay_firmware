@@ -1,5 +1,17 @@
 const core = @import("zigmkay").core;
 
+/// A supplied/exported module owns its canonical identity. Never infer one
+/// from captions, local paths or a default profile with unknown provenance.
+pub fn companionIdentity(comptime keymap: type, comptime enabled: bool) ?@import("zigmkay").device_protocol.Identity {
+    if (!enabled) return null;
+    @setEvalBranchQuota(500000);
+    const protocol = @import("zigmkay").device_protocol;
+    if (!@hasDecl(keymap, "identity")) @compileError("Companion telemetry requires a supplied canonical keymap identity");
+    const identity = keymap.identity(protocol);
+    protocol.validateIdentity(identity) catch @compileError("Invalid supplied companion identity");
+    return identity;
+}
+
 /// Wiring fixes the key count and side ownership; a supplied module owns layers.
 pub fn validate(comptime keymap: type, comptime key_count: usize, comptime sides: ?[]const core.Side) core.KeymapDimensions {
     if (keymap.keymap.len == 0) @compileError("Keymap must contain at least one layer");

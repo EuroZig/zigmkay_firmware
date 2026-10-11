@@ -86,6 +86,7 @@ pub fn main() !void {
         comptime var config = zigmkay.loops.GetPrimarySideConfigType(&board_dimensions){
             .config = .{
                 .keymap = &keymap.keymap,
+                .companion_identity = @import("keymap_validation").companionIdentity(keymap, @import("firmware-options").companion_enabled),
                 .combos = keymap.combos[0..],
                 .scanner_settings = &.{
                     .matrix = .{

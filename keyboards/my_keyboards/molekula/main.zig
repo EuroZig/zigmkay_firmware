@@ -179,6 +179,7 @@ pub fn main() !void {
     comptime var config = zigmkay.loops.GetUnibodyConfigType(&board_dimensions){
         .config = .{
             .keymap = &keymap.keymap,
+            .companion_identity = @import("keymap_validation").companionIdentity(keymap, @import("firmware-options").companion_enabled),
             .scanner_settings = &.{
                 .matrix = .{
                     .debounce = .{ .ms = 50 },
