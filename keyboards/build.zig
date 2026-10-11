@@ -8,14 +8,18 @@ const MicroBuild = microzig.MicroBuild(.{
 const KeyboardSample = struct {
     name: []const u8,
     root_source_file: []const u8,
+    /// Keymap source exposed to the board's main file as `@import("keymap")`,
+    /// so one main file per board can be combined with different keymaps.
+    keymap: ?[]const u8 = null,
 };
 
 const keyboard_samples = [_]KeyboardSample{
     .{ .name = "clacky_chan", .root_source_file = "my_keyboards/rollercole/clacky_chan.zig" },
-    .{ .name = "clackychan_colemak", .root_source_file = "my_keyboards/janbeelte/clackychan_main.zig" },
-    .{ .name = "keycaprio_colemak_0_4", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_4.zig" },
-    .{ .name = "keycaprio_colemak_0_6", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_6.zig" },
-    .{ .name = "keycaprio_us_intl_0_7", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_7.zig" },
+    .{ .name = "clackychan_colemak", .root_source_file = "my_keyboards/janbeelte/clackychan_main.zig", .keymap = "my_keyboards/janbeelte/clackychan_colemak_keymap.zig" },
+    .{ .name = "keycaprio_colemak_0_4", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_4.zig", .keymap = "my_keyboards/janbeelte/clackychan_colemak_keymap.zig" },
+    .{ .name = "keycaprio_colemak_0_6", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_6.zig", .keymap = "my_keyboards/janbeelte/keycaprio_colemak_keymap.zig" },
+    .{ .name = "keycaprio_colemak_0_7", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_7.zig", .keymap = "my_keyboards/janbeelte/keycaprio_colemak_keymap.zig" },
+    .{ .name = "keycaprio_us_intl_0_7", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_7.zig", .keymap = "my_keyboards/janbeelte/keycaprio_us_intl_keymap.zig" },
     .{ .name = "lk1", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_1.zig" },
     .{ .name = "lk2", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_2.zig" },
     .{ .name = "lk6", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_6.zig" },
@@ -46,7 +50,7 @@ pub fn build(b: *std.Build) void {
         std.debug.panic("Unknown keyboard sample: '{s}'", .{selected_keyboard});
     };
 
-    const firmware = addKeyboardFirmware(b, mb, &target, optimize, "zigmkay_firmware", sample.root_source_file, zigmkay_dep, zkeycodes_dep);
+    const firmware = addKeyboardFirmware(b, mb, &target, optimize, "zigmkay_firmware", sample, zigmkay_dep, zkeycodes_dep);
     mb.install_firmware(firmware, .{});
 
     const firmware_uf2 = firmware.get_emitted_bin(.{ .uf2 = .{ .family_id = .RP2040 } });
@@ -75,7 +79,7 @@ pub fn build(b: *std.Build) void {
     // Compile every keyboard so a broken keymap fails the tests, not just the
     // one selected with -Dkeyboard.
     for (keyboard_samples) |keyboard| {
-        const keyboard_firmware = addKeyboardFirmware(b, mb, &target, optimize, keyboard.name, keyboard.root_source_file, zigmkay_dep, zkeycodes_dep);
+        const keyboard_firmware = addKeyboardFirmware(b, mb, &target, optimize, keyboard.name, keyboard, zigmkay_dep, zkeycodes_dep);
         test_step.dependOn(&keyboard_firmware.exe.step);
     }
 
@@ -91,7 +95,7 @@ fn addKeyboardFirmware(
     target: *const microzig.Target,
     optimize: std.builtin.OptimizeMode,
     name: []const u8,
-    root_source_file: []const u8,
+    sample: KeyboardSample,
     zigmkay_dep: *std.Build.Dependency,
     zkeycodes_dep: *std.Build.Dependency,
 ) *MicroBuild.Firmware {
@@ -99,7 +103,7 @@ fn addKeyboardFirmware(
         .name = name,
         .target = target,
         .optimize = optimize,
-        .root_source_file = b.path(root_source_file),
+        .root_source_file = b.path(sample.root_source_file),
     });
     const zigmkay_mod = b.createModule(.{ .root_source_file = zigmkay_dep.path("src/root.zig") });
     const zkeycodes_mod = b.createModule(.{
@@ -108,6 +112,16 @@ fn addKeyboardFirmware(
     });
     firmware.add_app_import("zigmkay", zigmkay_mod, .{ .depend_on_microzig = true });
     firmware.add_app_import("zkeycodes", zkeycodes_mod, .{ .depend_on_microzig = true });
+    if (sample.keymap) |keymap_source_file| {
+        const keymap_mod = b.createModule(.{
+            .root_source_file = b.path(keymap_source_file),
+            .imports = &.{
+                .{ .name = "zigmkay", .module = zigmkay_mod },
+                .{ .name = "zkeycodes", .module = zkeycodes_mod },
+            },
+        });
+        firmware.add_app_import("keymap", keymap_mod, .{ .depend_on_microzig = true });
+    }
     return firmware;
 }
 
