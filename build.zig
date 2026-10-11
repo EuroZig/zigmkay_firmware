@@ -17,12 +17,21 @@ pub const boards = @import("keyboards/boards.zig");
 pub const addKeyboardFirmware = @import("keyboards/build_api.zig").addKeyboardFirmware;
 pub const FirmwareSources = @import("keyboards/build_api.zig").Sources;
 pub const device_protocol_version: u8 = 2;
+pub const default_keymap_catalog_version: u16 = 1;
 
 pub fn build(b: *std.Build) void {
     const zigmkay_mod = b.addModule("zigmkay", .{
         .root_source_file = .{
             .src_path = .{ .owner = b, .sub_path = "zigmkay/src/root.zig" },
         },
+    });
+    const keycodes = b.createModule(.{
+        .root_source_file = b.path("zkeycodes/root.zig"),
+        .imports = &.{.{ .name = "zigmkay", .module = zigmkay_mod }},
+    });
+    _ = b.addModule("default-keymaps", .{
+        .root_source_file = b.path("keyboards/default_keymaps.zig"),
+        .imports = &.{ .{ .name = "zigmkay", .module = zigmkay_mod }, .{ .name = "zkeycodes", .module = keycodes } },
     });
 
     const test_run_step = b.step("test", "Run unit tests");
