@@ -256,22 +256,112 @@ test "fixed transport storage stays below one KiB" {
     try std.testing.expect(@sizeOf(transport.Transport) <= 1024);
 }
 
-test "capabilities remain zero and bootloader requests return unsupported" {
+test "bootloader capability requires ACK and drain before one-shot reset" {
     var t = transport.Transport.init(identity);
     var fake = Fake{};
     try synchronize(&t, &fake);
     try control(&t, .{ .session = 42, .request = 3, .payload = .capabilities_request });
     t.pump(fake.endpoint());
-    try std.testing.expectEqual(@as(u16, 0), (try fake.packet(5)).payload.capabilities);
+    try std.testing.expectEqual(protocol.capability_bootloader, (try fake.packet(5)).payload.capabilities);
+    try control(&t, .{ .session = 7, .request = 4, .payload = .enter_bootloader });
+    try std.testing.expectEqual(@as(u32, 1), t.rejected_controls);
     try control(&t, .{ .session = 42, .request = 4, .payload = .enter_bootloader });
+    try std.testing.expect(!t.takeBootloader(1));
+    fake.ready = false;
+    t.pump(fake.endpoint());
+    try std.testing.expect(!t.takeBootloader(50_000));
+    fake.ready = true;
     t.pump(fake.endpoint());
     const reply = try fake.packet(6);
     try std.testing.expectEqual(@as(u32, 42), reply.session);
     try std.testing.expectEqual(@as(u16, 4), reply.request);
-    try std.testing.expectEqual(protocol.BootloaderResult.unsupported, reply.payload.bootloader_result);
-    key(&t, true, 0);
+    try std.testing.expectEqual(protocol.BootloaderResult.accepted, reply.payload.bootloader_result);
+    try std.testing.expect(!t.takeBootloader(69_999));
+    try std.testing.expect(t.takeBootloader(70_000));
+    try std.testing.expect(!t.takeBootloader(90_000));
+
+    try hello(&t, &fake);
+    try control(&t, .{ .session = 42, .request = 4, .payload = .enter_bootloader });
     t.pump(fake.endpoint());
-    try std.testing.expect((try fake.packet(7)).payload.key.pressed);
+    try std.testing.expectEqual(protocol.BootloaderResult.accepted, (try fake.packet(fake.count - 1)).payload.bootloader_result);
+}
+
+test "bootloader timeout rejects stale ACK and duplicate request" {
+    var t = transport.Transport.init(identity);
+    var fake = Fake{};
+    try hello(&t, &fake);
+    fake.ready = false;
+    try control(&t, .{ .session = 42, .request = 4, .payload = .enter_bootloader });
+    try std.testing.expect(!t.takeBootloader(1));
+    t.pump(fake.endpoint());
+    try std.testing.expect(!t.takeBootloader(100_001));
+    try std.testing.expectEqual(@as(usize, 0), t.control_count);
+    fake.ready = true;
+    t.pump(fake.endpoint());
+    try std.testing.expect(!t.takeBootloader(200_000));
+    try control(&t, .{ .session = 42, .request = 4, .payload = .enter_bootloader });
+    t.pump(fake.endpoint());
+    try std.testing.expectEqual(protocol.BootloaderResult.duplicate, (try fake.packet(fake.count - 1)).payload.bootloader_result);
+    try std.testing.expect(!t.takeBootloader(300_000));
+    try control(&t, .{ .session = 42, .request = 5, .payload = .enter_bootloader });
+    t.pump(fake.endpoint());
+    try std.testing.expectEqual(protocol.BootloaderResult.accepted, (try fake.packet(fake.count - 1)).payload.bootloader_result);
+    try std.testing.expect(!t.takeBootloader(319_999));
+    try std.testing.expect(t.takeBootloader(320_000));
+}
+
+test "blocked old controls expire pending bootloader before late writable endpoint" {
+    var t = transport.Transport.init(identity);
+    var fake = Fake{};
+    try hello(&t, &fake);
+    fake.ready = false;
+    try control(&t, .{ .session = 42, .request = 3, .payload = .snapshot_request });
+    const request = try protocol.encodePacket(.{ .session = 42, .request = 4, .payload = .enter_bootloader }, identity.dimensions, .host_to_device);
+    t.receive(&request);
+    t.boundary();
+    try std.testing.expect(t.pending != null);
+    try std.testing.expect(!t.takeBootloader(100_000));
+    fake.ready = true;
+    t.pump(fake.endpoint());
+    try std.testing.expect(!t.takeBootloader(200_000));
+    try std.testing.expect(t.pending == null);
+    try std.testing.expect(t.bootloader_request == null);
+    t.pump(fake.endpoint());
+    try std.testing.expect(!t.takeBootloader(500_000));
+}
+
+test "unrelated control send cannot acknowledge pending bootloader" {
+    var t = transport.Transport.init(identity);
+    var fake = Fake{};
+    try hello(&t, &fake);
+    try control(&t, .{ .session = 42, .request = 4, .payload = .enter_bootloader });
+    try std.testing.expect(!t.takeBootloader(1));
+    // Inject an unrelated queued control to exercise ACK correlation even if
+    // normal mailbox admission prevents this ordering.
+    t.controls[0] = try protocol.encodePacket(.{ .session = 42, .request = 5, .payload = .{ .bootloader_result = .accepted } }, identity.dimensions, .device_to_host);
+    t.pump(fake.endpoint());
+    try std.testing.expect(t.bootloader_acknowledged == null);
+    try std.testing.expect(!t.takeBootloader(21_000));
+    try std.testing.expect(!t.takeBootloader(100_001));
+}
+
+test "replacement Hello cancels accepted request and stale ACK" {
+    var t = transport.Transport.init(identity);
+    var fake = Fake{};
+    try hello(&t, &fake);
+    try control(&t, .{ .session = 42, .request = 4, .payload = .enter_bootloader });
+    t.pump(fake.endpoint());
+    try std.testing.expect(!t.takeBootloader(10_000));
+    const replacement = try protocol.encodePacket(.{ .session = 0, .nonce = 99, .request = 5, .payload = .hello }, identity.dimensions, .host_to_device);
+    t.receive(&replacement);
+    // The real loop checks the drain deadline before calling boundary().
+    try std.testing.expect(!t.takeBootloader(20_000));
+    t.boundary();
+    try std.testing.expect(!t.takeBootloader(50_000));
+    try std.testing.expect(t.bootloader_request == null);
+    try std.testing.expectEqual(@as(u32, 99), t.session);
+    for (0..3) |_| t.pump(fake.endpoint());
+    try std.testing.expect(!t.takeBootloader(200_000));
 }
 
 test "nonreserved RawHID diagnostics retain keyboard queue path with telemetry sink" {

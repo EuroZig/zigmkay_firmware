@@ -121,6 +121,7 @@ fn run_primary_internal(
     // USB events
     const usb_command_executor = usb.CreateAndInitUsbCommandExecutor();
     if (observed) usb_if.attach_telemetry(&transport);
+    var last_configuration_generation: u32 = if (observed) usb_if.configuration_generation() else 0;
     while (true) {
         // Detect local changes
         const current_time = core.TimeSinceBoot{ .time_since_boot_us = time.get_time_since_boot().to_us() };
@@ -138,9 +139,15 @@ fn run_primary_internal(
         // Execute actions: send usb commands to the host
         try usb_command_executor.HouseKeepAndProcessCommands(&usb_command_queue, current_time);
         if (observed) {
-            // USB polling above makes one bounded command available. Process it
-            // after the processor cut, then attempt at most one report send.
+            const generation = usb_if.configuration_generation();
+            if (generation != last_configuration_generation) {
+                transport.disconnect();
+                last_configuration_generation = generation;
+            }
+            // Expire blocked requests before the next report send; timestamp
+            // sends with this tick's clock rather than a previous USB poll.
             if (usb_if.raw_connected()) {
+                if (transport.takeBootloader(current_time.time_since_boot_us)) rp2xxx.rom.reset_to_usb_boot();
                 transport.boundary();
                 transport.pump(.{ .context = &transport, .send = usb_if.try_send_raw_report });
             } else {
