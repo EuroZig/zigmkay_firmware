@@ -113,10 +113,8 @@ pub fn build(b: *std.Build) void {
         tests.dependOn(&item.exe.step);
     }
 
-    // Tool preparation is explicit; no default/test graph resolves flashing tools.
-    if (b.option(bool, "flash-tools", "Prepare optional picotool flash step") orelse false) {
-        const dep = b.dependency("zigmkay", .{ .@"flash-tools" = true });
-        const flash = @import("zigmkay").addPicotoolFlash(b, dep, uf2);
-        b.step("flash", "Flash the selected firmware (explicit device operation)").dependOn(&flash.step);
-    }
+    // Register flash steps without executing them during builds or tests.
+    // Upstream defaults to mount flashing on Windows and picotool elsewhere.
+    const zigmkay_dep = b.dependency("zigmkay", .{ .@"flash-tools" = true });
+    _ = @import("zigmkay").addFlashSteps(b, zigmkay_dep, uf2);
 }

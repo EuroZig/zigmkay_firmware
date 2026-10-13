@@ -1,18 +1,13 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const build_utils = @import("zigmkay/build_utils.zig");
+const zigmkay_build = @import("zigmkay");
 pub const microzig = @import("microzig");
 
 const MicroBuild = microzig.MicroBuild(.{
     .rp2xxx = true,
 });
 
-/// Usage from a downstream build.zig that depends on this repository:
-///     const zigmkay_dep = b.dependency("zigmkay_firmware", .{ .@"flash-tools" = true });
-///     const flash = @import("zigmkay_firmware").addPicotoolFlash(b, zigmkay_dep, firmware_uf2);
-///     b.step("flash", "Flash with picotool").dependOn(&flash.step);
-pub const addPicotoolFlash = build_utils.addPicotoolFlash;
 pub const boards = @import("keyboards/boards.zig");
 pub const addKeyboardFirmware = @import("keyboards/build_api.zig").addKeyboardFirmware;
 pub const FirmwareSources = @import("keyboards/build_api.zig").Sources;
@@ -20,6 +15,18 @@ pub const device_protocol_version: u8 = 2;
 pub const default_keymap_catalog_version: u16 = 1;
 pub const flash_wrapper_contract_version: u16 = 1;
 pub const processing_descriptor_version: u16 = 1;
+pub const addPicotoolFlash = zigmkay_build.addPicotoolFlash;
+pub const FlashSteps = zigmkay_build.FlashSteps;
+
+/// Adds the `flash`, `flash_pt` and `flash_mount` steps and the
+/// `-Dflash-mount` option for `firmware_uf2`. `firmware_dep` is this package
+/// (zigmkay_firmware) as a dependency of the calling package:
+///     const firmware_dep = b.dependency("zigmkay_firmware", .{});
+///     _ = @import("zigmkay_firmware").addFlashSteps(b, firmware_dep, firmware_uf2);
+pub fn addFlashSteps(b: *std.Build, firmware_dep: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) FlashSteps {
+    const zigmkay_dep = firmware_dep.builder.dependency("zigmkay", .{});
+    return zigmkay_build.addFlashSteps(b, zigmkay_dep, firmware_uf2);
+}
 
 pub fn build(b: *std.Build) void {
     const zigmkay_mod = b.addModule("zigmkay", .{
@@ -37,26 +44,11 @@ pub fn build(b: *std.Build) void {
     });
 
     const test_run_step = b.step("test", "Run unit tests");
-    build_utils.add_test_steps(b, zigmkay_mod, test_run_step, "zigmkay/tests");
-    build_utils.add_picotool_tests(b, "zigmkay/tools", test_run_step);
-    // Portable consumers do not need a native flashing tool or its dependency.
-    if (b.option(bool, "flash-tools", "Build optional picotool flashing tools") orelse false)
-        build_utils.install_picotool_flash(b, "zigmkay/tools/picotool_flash.zig");
+    zigmkay_build.add_test_steps(b, zigmkay_mod, test_run_step, "zigmkay/tests");
 
     if (builtin.os.tag == .macos) {
-        const rawhid_monitor = b.addExecutable(.{
-            .name = "rawhid-monitor",
-            .root_module = b.createModule(.{ .target = b.graph.host }),
-        });
-        rawhid_monitor.root_module.addCSourceFile(.{
-            .file = b.path("tools/rawhid_monitor.c"),
-            .flags = &.{"-std=c11"},
-        });
-        rawhid_monitor.root_module.link_libc = true;
-        rawhid_monitor.root_module.linkFramework("IOKit", .{});
-        rawhid_monitor.root_module.linkFramework("CoreFoundation", .{});
-
-        const run_rawhid_monitor = b.addRunArtifact(rawhid_monitor);
+        const zigmkay_dep = b.dependency("zigmkay", .{});
+        const run_rawhid_monitor = b.addRunArtifact(zigmkay_dep.artifact("rawhid-monitor"));
         const rawhid_monitor_step = b.step("rawhid-monitor", "Observe ZigMkay Raw HID key events");
         rawhid_monitor_step.dependOn(&run_rawhid_monitor.step);
     }
