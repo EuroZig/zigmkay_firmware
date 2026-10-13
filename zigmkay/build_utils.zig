@@ -159,7 +159,10 @@ pub const FlashSteps = struct {
 /// `firmware_uf2`, plus the `-Dflash-mount=<path|label>` option, so the calling
 /// package must not declare that option itself. The UF2 must carry the RP2040
 /// family ID. `dependency` is the zigmkay package as a dependency of the
-/// calling package.
+/// calling package. The dependency must be instantiated with
+/// `.\u0040"flash-tools" = true`; call this helper only behind an explicit
+/// downstream opt-in, since registering `flash_pt` resolves picotool at graph
+/// construction time even when the requested step is an ordinary build/test.
 pub fn addFlashSteps(b: *std.Build, dependency: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) FlashSteps {
     const flash_mount = b.option([]const u8, "flash-mount", "Mount point or volume label of the RP2 bootloader (default: RPI-RP2)");
 

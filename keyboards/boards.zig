@@ -13,6 +13,7 @@ pub const entries = [_]Entry{
     .{ .name = "clackychan_colemak", .root_source_file = "my_keyboards/janbeelte/clackychan_main.zig", .default_keymap = "my_keyboards/janbeelte/clackychan_colemak_keymap.zig" },
     .{ .name = "keycaprio_colemak_0_4", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_4.zig", .default_keymap = "my_keyboards/janbeelte/clackychan_colemak_keymap.zig" },
     .{ .name = "keycaprio_colemak_0_6", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_6.zig", .default_keymap = "my_keyboards/janbeelte/keycaprio_colemak_keymap.zig" },
+    .{ .name = "keycaprio_colemak_0_7", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_7.zig", .default_keymap = "my_keyboards/janbeelte/keycaprio_colemak_keymap.zig" },
     .{ .name = "keycaprio_us_intl_0_7", .root_source_file = "my_keyboards/janbeelte/keycaprio_main_0_7.zig", .default_keymap = "my_keyboards/janbeelte/keycaprio_us_intl_keymap.zig" },
     .{ .name = "lk1", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_1.zig", .default_keymap = "my_keyboards/rollercole/shared_keymap_28_1.zig" },
     .{ .name = "lk2", .root_source_file = "my_keyboards/rollercole/leonardo_keycaprio_0_2.zig", .default_keymap = "my_keyboards/rollercole/shared_keymap_28_1.zig" },
@@ -33,6 +34,10 @@ pub fn find(name: []const u8) ?Entry {
 }
 
 test "firmware selector names are unique" {
+    try std.testing.expectEqual(@as(usize, 14), entries.len);
+    const colemak = find("keycaprio_colemak_0_7").?;
+    try std.testing.expectEqualStrings("my_keyboards/janbeelte/keycaprio_main_0_7.zig", colemak.root_source_file);
+    try std.testing.expectEqualStrings("my_keyboards/janbeelte/keycaprio_colemak_keymap.zig", colemak.default_keymap);
     for (entries, 0..) |entry, index| {
         try std.testing.expectEqualStrings(entry.name, find(entry.name).?.name);
         for (entries[index + 1 ..]) |other| try std.testing.expect(!std.mem.eql(u8, entry.name, other.name));

@@ -23,8 +23,10 @@ pub const FlashSteps = zigmkay_build.FlashSteps;
 /// (zigmkay_firmware) as a dependency of the calling package:
 ///     const firmware_dep = b.dependency("zigmkay_firmware", .{});
 ///     _ = @import("zigmkay_firmware").addFlashSteps(b, firmware_dep, firmware_uf2);
+/// Call this helper only when explicitly enabling flash steps in the downstream
+/// build: registering the picotool step prepares the optional picotool dependency.
 pub fn addFlashSteps(b: *std.Build, firmware_dep: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) FlashSteps {
-    const zigmkay_dep = firmware_dep.builder.dependency("zigmkay", .{});
+    const zigmkay_dep = firmware_dep.builder.dependency("zigmkay", .{ .@"flash-tools" = true });
     return zigmkay_build.addFlashSteps(b, zigmkay_dep, firmware_uf2);
 }
 

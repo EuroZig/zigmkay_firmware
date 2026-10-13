@@ -21,6 +21,7 @@
         "examples",
         "my_keyboards",
         "boards.zig",
+        "processing_descriptors.zig",
         "build_api.zig",
         "keymap_validation.zig",
         "tests",

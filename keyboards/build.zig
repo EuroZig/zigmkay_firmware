@@ -113,8 +113,10 @@ pub fn build(b: *std.Build) void {
         tests.dependOn(&item.exe.step);
     }
 
-    // Register flash steps without executing them during builds or tests.
-    // Upstream defaults to mount flashing on Windows and picotool elsewhere.
-    const zigmkay_dep = b.dependency("zigmkay", .{ .@"flash-tools" = true });
-    _ = @import("zigmkay").addFlashSteps(b, zigmkay_dep, uf2);
+    // Preparing picotool is opt-in, including when merely registering flash steps.
+    // On Windows the default flash step still uses the mounted bootloader volume.
+    if (b.option(bool, "flash-steps", "Register explicit flash steps and prepare picotool (may fetch dependencies)") orelse false) {
+        const zigmkay_dep = b.dependency("zigmkay", .{ .@"flash-tools" = true });
+        _ = @import("zigmkay").addFlashSteps(b, zigmkay_dep, uf2);
+    }
 }
