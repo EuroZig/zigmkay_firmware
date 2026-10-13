@@ -48,6 +48,14 @@ pub fn build(b: *std.Build) void {
     const test_run_step = b.step("test", "Run unit tests");
     zigmkay_build.add_test_steps(b, zigmkay_mod, test_run_step, "zigmkay/tests");
 
+    // Downstream preparation explicitly requests these named artifacts from the
+    // root package; ordinary root builds never resolve the picotool dependency.
+    if (b.option(bool, "flash-tools", "Prepare bounded picotool tools for downstream consumers") orelse false) {
+        const tools = b.dependency("zigmkay", .{ .@"flash-tools" = true });
+        b.installArtifact(tools.artifact("picotool_flash"));
+        b.addNamedLazyPath("picotool", tools.namedLazyPath("picotool"));
+    }
+
     if (builtin.os.tag == .macos) {
         const zigmkay_dep = b.dependency("zigmkay", .{});
         const run_rawhid_monitor = b.addRunArtifact(zigmkay_dep.artifact("rawhid-monitor"));
