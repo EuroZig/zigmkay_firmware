@@ -154,5 +154,6 @@ fn printAvailableSamples() void {
     std.debug.print("zig build -Dkeyboard=<name>\t\tBuild the Firmware\n", .{});
     std.debug.print("zig build flash -Dkeyboard=<name>\tBuild & Flash using the host default\n", .{});
     std.debug.print("zig build flash_pt -Dkeyboard=<name>\tBuild & Flash with picotool\n", .{});
-    std.debug.print("zig build flash_mount -Dkeyboard=<name>\tBuild & Flash through the mounted RP2 volume\n\n", .{});
+    std.debug.print("zig build flash_mount -Dkeyboard=<name>\tBuild & Flash through the mounted RP2 volume\n", .{});
+    std.debug.print("zig build install-udev-rules\t\tLinux: install picotool udev rules (sudo)\n\n", .{});
 }
