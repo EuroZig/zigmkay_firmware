@@ -28,12 +28,10 @@ pub const pin_config = rp2xxx.pins.GlobalConfiguration{
 };
 pub const p = pin_config.pins();
 
-const dimensions = core.KeymapDimensions{
-    .key_count = 1,
-    .layer_count = 1
-};
+const supplied_keymap = @import("keymap");
+const processing = @import("processing-descriptors").find("encoder_demo").?;
+const dimensions = @import("keymap_validation").validate(supplied_keymap, processing.key_count, null);
 pub const no_pin_mappings = [dimensions.key_count]?[2]usize{ .{0,0} };
-pub const keymap = [dimensions.layer_count][dimensions.key_count]?core.KeyDef{.{core.KeyDef{.tap_only = .{.key_press = .{ .tap_keycode = 10 }}}}};
 
 pub const scanner_settings = zigmkay.matrix_scanning.ScannerSettings{
     .debounce = .{ .ms = 50 },
@@ -49,10 +47,11 @@ pub fn main() !void {
     };
 }
 
-var encoder_actions = [_]core.EncoderAction{
+const default_encoder_actions = [processing.encoder_actions]core.EncoderAction{
     .{ .tap = core.TapDef{ .media_key = .VolumeUp } },
     .{ .tap = core.TapDef{ .media_key = .VolumeDown } },
 };
+var encoder_actions = @import("keymap_validation").encoderActions(supplied_keymap, default_encoder_actions);
 var encoder_pin_configs = [_]encoder_scanning.EncoderPinConfig{encoder_scanning.EncoderPinConfig{
     .pin_a = p.data1,
     .pin_b = p.data2,
@@ -67,7 +66,8 @@ pub fn run() !void {
     // Mandatory
     comptime var config = zigmkay.loops.GetUnibodyConfigType(&dimensions){
         .config = .{
-            .keymap = &keymap,
+            .keymap = &supplied_keymap.keymap,
+            .companion_identity = @import("keymap_validation").companionIdentity(supplied_keymap, @import("firmware-options").companion_enabled),
             .scanner_settings = &.{
                 .matrix = .{
                     .pin_cols = pins_cols[0..],

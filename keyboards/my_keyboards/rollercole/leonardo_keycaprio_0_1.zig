@@ -8,7 +8,12 @@ pub const std_options = microzig.std_options(.{});
 const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
-const rollercole_shared_keymap = @import("shared_keymap_28_1.zig");
+const rollercole_shared_keymap = @import("keymap");
+const processing = @import("processing-descriptors").find("lk1").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
+const board_dimensions = @import("keymap_validation").validate(rollercole_shared_keymap, board_key_count, &board_sides);
+
 const zigmkay = @import("zigmkay");
 const dk = zigmkay.keycodes.dk;
 const core = zigmkay.core;
@@ -33,7 +38,7 @@ pub const pin_config = rp2xxx.pins.GlobalConfiguration{
 };
 pub const p = pin_config.pins();
 
-pub const pin_mappings = [rollercole_shared_keymap.key_count]?[2]usize{
+pub const pin_mappings = [board_key_count]?[2]usize{
   .{0,0}, .{1,0}, .{2,0}, .{3,0}, .{4,0},  .{4,3},.{3,3},.{2,3},.{1,3},.{0,3},
   .{0,1}, .{1,1}, .{2,1}, .{3,1}, .{4,1},    .{4,4},.{3,4},.{2,4},.{1,4},.{0,4},
           .{1,2}, .{2,2}, .{3,2}, .{4,2},    .{4,5},.{3,5},.{2,5},.{1,5},
@@ -49,11 +54,12 @@ pub fn main() !void {
     blink_led(1, 300); // Show the user that the keyboard has actually booted up.
 
     // Mandatory
-    comptime var config = zigmkay.loops.GetUnibodyConfigType(&rollercole_shared_keymap.dimensions){
+    comptime var config = zigmkay.loops.GetUnibodyConfigType(&board_dimensions){
         .config = .{
             .keymap = &rollercole_shared_keymap.keymap,
+            .companion_identity = @import("keymap_validation").companionIdentity(rollercole_shared_keymap, @import("firmware-options").companion_enabled),
             .custom_functions = &rollercole_shared_keymap.custom_functions,
-            .side_definition = &rollercole_shared_keymap.sides,
+            .side_definition = &board_sides,
             .combos = rollercole_shared_keymap.combos[0..],
             .scanner_settings = &.{
                 .matrix = .{

@@ -8,7 +8,12 @@ pub const std_options = microzig.std_options(.{});
 const rp2xxx = microzig.hal;
 const time = rp2xxx.time;
 const gpio = rp2xxx.gpio;
-const rollercole_shared_keymap = @import("shared_keymap_28_1.zig");
+const rollercole_shared_keymap = @import("keymap");
+const processing = @import("processing-descriptors").find("tuckytwotimes").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
+const board_dimensions = @import("keymap_validation").validate(rollercole_shared_keymap, board_key_count, &board_sides);
+
 const zigmkay = @import("zigmkay");
 const zkeycodes = @import("zkeycodes");
 const core = zigmkay.core;
@@ -52,12 +57,13 @@ pub const pin_config = rp2xxx.pins.GlobalConfiguration{
     .GPIO8 = .{ .name = "GP8", .direction = .in, .pull = .up},
 };
 
-var encoder_actions = [_]core.EncoderAction{
+const default_encoder_actions = [processing.encoder_actions]core.EncoderAction{
     .{ .tap = core.TapDef{ .media_key = .VolumeUp } },
     .{ .tap = core.TapDef{ .media_key = .VolumeDown } },
     .{ .tap = core.TapDef{ .key_press = .{ .tap_keycode = 10 } } },
     .{ .tap = core.TapDef{ .key_press = .{ .tap_keycode = 11 } } },
 };
+var encoder_actions = @import("keymap_validation").encoderActions(rollercole_shared_keymap, default_encoder_actions);
 var encoder_pin_configs_left = [_]encoder_scanning.EncoderPinConfig{
     .{
     .pin_a = p.data1,
@@ -102,10 +108,7 @@ pub fn main() !void {
     @setEvalBranchQuota(10_000);
     _ = pin_config.apply();
 
-    const keymap_dimensions = zigmkay.core.KeymapDimensions{
-        .key_count = rollercole_shared_keymap.key_count,
-        .layer_count = rollercole_shared_keymap.keymap.len,
-    };
+    const keymap_dimensions = board_dimensions;
 
     const primary = check_is_primary_side();
     p.led.put(if (primary) 1 else 0);
@@ -116,8 +119,9 @@ pub fn main() !void {
         comptime var config = zigmkay.loops.GetPrimarySideConfigType(&keymap_dimensions){
             .config = .{
                 .keymap = &rollercole_shared_keymap.keymap,
+                .companion_identity = @import("keymap_validation").companionIdentity(rollercole_shared_keymap, @import("firmware-options").companion_enabled),
                 .custom_functions = &rollercole_shared_keymap.custom_functions,
-                .side_definition = &rollercole_shared_keymap.sides,
+                .side_definition = &board_sides,
                 .combos = rollercole_shared_keymap.combos[0..],
                 .scanner_settings = &.{
                     .direct_wiring = .{
@@ -129,7 +133,7 @@ pub fn main() !void {
                 .encoder_actions = encoder_actions[0..],
                 //.combos = rollercole_shared_keymap.combos[0..],
                 //.custom_functions = &rollercole_shared_keymap.custom_functions,
-                //.side_definition = &rollercole_shared_keymap.sides,
+                //.side_definition = &board_sides,
             },
         };
 

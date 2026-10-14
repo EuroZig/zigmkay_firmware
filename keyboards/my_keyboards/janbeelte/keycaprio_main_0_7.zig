@@ -1,6 +1,11 @@
 const std = @import("std");
 
 const keymap = @import("keymap");
+const processing = @import("processing-descriptors").find("keycaprio_us_intl_0_7").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
+const board_dimensions = @import("keymap_validation").validate(keymap, board_key_count, &board_sides);
+
 const zigmkay = @import("zigmkay");
 const microzig = @import("microzig");
 comptime {
@@ -44,7 +49,7 @@ pub const p = blk: {
     @setEvalBranchQuota(10_000);
     break :blk pin_config.pins();
 };
-pub const pin_mappings = [keymap.key_count]?[2]usize{
+pub const pin_mappings = [board_key_count]?[2]usize{
   .{0,0}, .{1,0}, .{2,0}, .{3,0}, .{4,0},  .{9,4},.{8,4},.{7,4},.{6,4},.{5,4},
   .{0,1}, .{1,1}, .{2,1}, .{3,1}, .{4,1},    .{9,5},.{8,5},.{7,5},.{6,5},.{5,5},
   .{0,2}, .{1,2}, .{2,2}, .{3,2}, .{4,2},    .{9,6},.{8,6},.{7,6},.{6,6},.{5,6},
@@ -71,11 +76,12 @@ pub fn main() !void {
     _ = pin_config.apply();
     blink_led(1, 300); // Show the user that the keyboard has actually booted up.
 
-    comptime var config = zigmkay.loops.GetUnibodyConfigType(&keymap.dimensions){
+    comptime var config = zigmkay.loops.GetUnibodyConfigType(&board_dimensions){
         .config = .{
             .keymap = &keymap.keymap,
+            .companion_identity = @import("keymap_validation").companionIdentity(keymap, @import("firmware-options").companion_enabled),
             .custom_functions = &keymap.custom_functions,
-            .side_definition = &keymap.sides,
+            .side_definition = &board_sides,
             .combos = keymap.combos[0..],
             .scanner_settings = &.{
                 .matrix = .{

@@ -1,6 +1,11 @@
 const std = @import("std");
 
 const keymap = @import("keymap");
+const processing = @import("processing-descriptors").find("clackychan_colemak").?;
+const board_key_count = processing.key_count;
+pub const board_sides = processing.sides[0..board_key_count].*;
+const board_dimensions = @import("keymap_validation").validate(keymap, board_key_count, &board_sides);
+
 const zigmkay = @import("zigmkay");
 const microzig = @import("microzig");
 comptime {
@@ -42,14 +47,14 @@ pub const p = blk: {
 };
 
 // zig fmt: off
-pub const pin_mappings_right = [keymap.key_count]?[2]usize{
+pub const pin_mappings_right = [board_key_count]?[2]usize{
    null, null, null, null, null,  .{0,13},.{0,12},.{0,11},.{0,10},.{0,5},
    null, null, null, null, null,   .{0,9},.{0,8},.{0,7},.{0,6},.{0,0},
          null, null, null, null,   .{0,4},.{0,3},.{0,2},.{0,1},
                            null,   .{0, 14}
 };
 
-pub const pin_mappings_left = [keymap.key_count]?[2]usize{
+pub const pin_mappings_left = [board_key_count]?[2]usize{
   .{0,5}, .{0,10},.{0,11},.{0,12},.{0,13},       null, null, null, null, null,
   .{0,0}, .{0,6}, .{0,7}, .{0,8}, .{0,9},       null, null, null, null, null,
           .{0,1}, .{0,2}, .{0,3}, .{0,4},      null, null, null, null,
@@ -79,9 +84,10 @@ pub fn main() !void {
     const primary = check_is_primary_side();
     if (primary) {
         blink_led(1, 300);
-        comptime var config = zigmkay.loops.GetPrimarySideConfigType(&keymap.dimensions){
+        comptime var config = zigmkay.loops.GetPrimarySideConfigType(&board_dimensions){
             .config = .{
                 .keymap = &keymap.keymap,
+                .companion_identity = @import("keymap_validation").companionIdentity(keymap, @import("firmware-options").companion_enabled),
                 .combos = keymap.combos[0..],
                 .scanner_settings = &.{
                     .matrix = .{
@@ -93,7 +99,7 @@ pub fn main() !void {
                     },
                 },
                 .custom_functions = &keymap.custom_functions,
-                .side_definition = &keymap.sides,
+                .side_definition = &board_sides,
             },
         };
         comptime var runner = config.build();
@@ -102,7 +108,7 @@ pub fn main() !void {
         };
     } else {
         blink_led(5, 50);
-        comptime var config = zigmkay.loops.GetSecondarySideConfigType(&keymap.dimensions){
+        comptime var config = zigmkay.loops.GetSecondarySideConfigType(&board_dimensions){
             .config = .{
                 .scanner_settings = &.{
                     .matrix = .{

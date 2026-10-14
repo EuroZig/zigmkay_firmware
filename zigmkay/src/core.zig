@@ -242,6 +242,7 @@ pub const OutputCommandQueue = struct {
     currently_pressed_keycodes: [256]bool = @splat(false),
     queue: QueueType = QueueType.Create(),
     current_mods: Modifiers = .{}, // holds the latest submitted
+    companion_signals: ?@import("telemetry.zig").SignalSink = null,
     pub fn Create() OutputCommandQueue {
         return OutputCommandQueue{};
     }
@@ -263,6 +264,12 @@ pub const OutputCommandQueue = struct {
         try release_key(self, tap);
     }
     pub fn press_key(self: *OutputCommandQueue, tap: KeyCodeFire) !void {
+        if (self.is_companion_key(tap)) {
+            if (self.currently_pressed_keycodes[tap.tap_keycode]) _ = self.send_companion_custom(companion_key_id(tap), false);
+            _ = self.send_companion_custom(companion_key_id(tap), true);
+            self.currently_pressed_keycodes[tap.tap_keycode] = true;
+            return;
+        }
         if (self.currently_pressed_keycodes[tap.tap_keycode]) {
             try self.queue.enqueue(.{ .KeyCodeRelease = tap.tap_keycode });
             self.currently_pressed_keycodes[tap.tap_keycode] = false;
@@ -282,6 +289,11 @@ pub const OutputCommandQueue = struct {
         }
     }
     pub fn release_key(self: *OutputCommandQueue, tap: KeyCodeFire) !void {
+        if (self.is_companion_key(tap)) {
+            if (self.currently_pressed_keycodes[tap.tap_keycode]) _ = self.send_companion_custom(companion_key_id(tap), false);
+            self.currently_pressed_keycodes[tap.tap_keycode] = false;
+            return;
+        }
         if (tap.tap_modifiers.has_any()) {
             return; // if modifiers exist, release has already been fire
         }
@@ -301,10 +313,32 @@ pub const OutputCommandQueue = struct {
     }
 
     pub fn send_raw_hid_signal(self: *OutputCommandQueue, signal_id: u8, data: []const u8) !void {
+        if (self.send_companion_custom(signal_id, data.len == 0 or data[0] != 0)) return;
         var buf: [8]u8 = @splat(0);
         const len = @min(data.len, 8);
         @memcpy(buf[0..len], data[0..len]);
         try self.queue.enqueue(.{ .RawHidSignal = .{ .signal_id = signal_id, .data = buf, .len = @intCast(len) } });
+    }
+
+    /// Only reserved companion intents leave the keyboard output queue.
+    pub fn send_companion_custom(self: *OutputCommandQueue, id: u8, pressed: bool) bool {
+        const sink = self.companion_signals orelse return false;
+        const kind: @import("device_protocol.zig").SignalKind = switch (id) {
+            CUSTOM_ID_COMPANION_LOG_TOGGLE => .log_toggle,
+            CUSTOM_ID_COMPANION_TOGGLE => .overlay_toggle,
+            CUSTOM_ID_COMPANION_SHUTDOWN => .shutdown,
+            else => return false,
+        };
+        sink.write(sink.context, .{ .kind = kind, .pressed = pressed });
+        return true;
+    }
+
+    pub fn is_companion_key(self: *const OutputCommandQueue, tap: KeyCodeFire) bool {
+        return self.companion_signals != null and (tap.tap_keycode == special_keycode_COMPANION or tap.tap_keycode == special_keycode_SHUTDOWN_COMPANION);
+    }
+
+    fn companion_key_id(tap: KeyCodeFire) u8 {
+        return if (tap.tap_keycode == special_keycode_COMPANION) CUSTOM_ID_COMPANION_TOGGLE else CUSTOM_ID_COMPANION_SHUTDOWN;
     }
 
     pub fn print_string(self: *OutputCommandQueue, string: []u8) !void {

@@ -1,5 +1,35 @@
 const std = @import("std");
 
+/// Offline wrapper tests use a Zig fixture executable and never resolve picotool.
+pub fn add_picotool_tests(b: *std.Build, tool_dir: []const u8, test_step: *std.Build.Step) void {
+    const wrapper_module = b.createModule(.{
+        .root_source_file = b.path(b.pathJoin(&.{ tool_dir, "flash_picotool.zig" })),
+        .target = b.graph.host,
+    });
+    const wrapper = b.addExecutable(.{ .name = "picotool_flash-test-wrapper", .root_module = wrapper_module });
+    const fixture = b.addExecutable(.{
+        .name = "picotool-offline-fixture",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(b.pathJoin(&.{ tool_dir, "picotool_fixture.zig" })),
+            .target = b.graph.host,
+            .link_libc = true,
+        }),
+    });
+    const options = b.addOptions();
+    options.addOptionPath("fixture", fixture.getEmittedBin());
+    options.addOptionPath("wrapper", wrapper.getEmittedBin());
+    const tests = b.addTest(.{ .root_module = b.createModule(.{
+        .root_source_file = b.path(b.pathJoin(&.{ tool_dir, "test_picotool_flash.zig" })),
+        .target = b.graph.host,
+        .imports = &.{.{ .name = "flash", .module = wrapper_module }},
+    }) });
+    tests.root_module.addOptions("options", options);
+    const run = b.addRunArtifact(tests);
+    const step = b.step("test-picotool", "Test flash wrapper offline without USB or picotool");
+    step.dependOn(&run.step);
+    test_step.dependOn(&run.step);
+}
+
 pub fn add_test_steps(b: *std.Build, zigmkay_module: *std.Build.Module, test_step: *std.Build.Step, test_dir: []const u8) void {
     const target = b.standardTargetOptions(.{});
 
@@ -36,8 +66,7 @@ pub fn add_test_steps(b: *std.Build, zigmkay_module: *std.Build.Module, test_ste
 
 /// Builds and installs the host tools so that dependents can fetch them with
 /// `dependency.artifact(...)`: `flash_picotool`, `flash_mount` and, on macOS,
-/// `rawhid-monitor`. Also exposes picotool, built from source, as the named
-/// lazy path "picotool".
+/// `rawhid-monitor`. Picotool preparation is separately opt-in.
 pub fn install_tools(b: *std.Build) void {
     inline for (.{ "flash_picotool", "flash_mount" }) |name| {
         const tool = b.addExecutable(.{
@@ -50,12 +79,6 @@ pub fn install_tools(b: *std.Build) void {
         });
         b.installArtifact(tool);
     }
-
-    const picotool_dep = b.dependency("picotool", .{
-        .target = b.graph.host,
-        .optimize = .ReleaseSafe,
-    });
-    b.addNamedLazyPath("picotool", picotool_dep.artifact("picotool").getEmittedBin());
 
     if (b.graph.host.result.os.tag == .macos) {
         const rawhid_monitor = b.addExecutable(.{
@@ -71,6 +94,25 @@ pub fn install_tools(b: *std.Build) void {
         rawhid_monitor.root_module.linkFramework("CoreFoundation", .{});
         b.installArtifact(rawhid_monitor);
     }
+}
+
+/// Exposes the bounded wrapper and picotool only when explicitly requested.
+/// The lazy dependency is not resolved by ordinary firmware builds or tests.
+pub fn install_picotool_flash(b: *std.Build) void {
+    const wrapper = b.addExecutable(.{
+        .name = "picotool_flash",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/picotool_flash.zig"),
+            .target = b.graph.host,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+    b.installArtifact(wrapper);
+    const picotool_dep = b.lazyDependency("picotool", .{
+        .target = b.graph.host,
+        .optimize = .ReleaseSafe,
+    }) orelse return;
+    b.addNamedLazyPath("picotool", picotool_dep.artifact("picotool").getEmittedBin());
 }
 
 /// Adds an uncached run step that flashes `firmware_uf2` with picotool: it
@@ -117,7 +159,10 @@ pub const FlashSteps = struct {
 /// `firmware_uf2`, plus the `-Dflash-mount=<path|label>` option, so the calling
 /// package must not declare that option itself. The UF2 must carry the RP2040
 /// family ID. `dependency` is the zigmkay package as a dependency of the
-/// calling package.
+/// calling package. The dependency must be instantiated with
+/// `.\u0040"flash-tools" = true`; call this helper only behind an explicit
+/// downstream opt-in, since registering `flash_pt` resolves picotool at graph
+/// construction time even when the requested step is an ordinary build/test.
 pub fn addFlashSteps(b: *std.Build, dependency: *std.Build.Dependency, firmware_uf2: std.Build.LazyPath) FlashSteps {
     const flash_mount = b.option([]const u8, "flash-mount", "Mount point or volume label of the RP2 bootloader (default: RPI-RP2)");
 

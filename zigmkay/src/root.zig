@@ -1,8 +1,16 @@
 pub const generic_queue = @import("generic_queue.zig");
 pub const core = @import("core.zig");
+pub const device_protocol = @import("device_protocol.zig");
+pub const telemetry = @import("telemetry.zig");
+pub const telemetry_transport = @import("telemetry_transport.zig");
 pub const matrix_scanning = @import("matrix_scanning.zig");
 pub const processing = @import("processing.zig");
 pub const usb = @import("usb_command_executor.zig");
+pub const usb_reports = @import("usb_reports.zig");
+pub const usb_ep0 = @import("usb_ep0.zig");
+pub const usb_requests = @import("usb_requests.zig");
+pub const usb_descriptor_bytes = @import("usb_descriptor_bytes.zig");
+pub const usb_buffer_control = @import("usb_buffer_control.zig");
 pub const encoder_scanning = @import("encoder_scanning.zig");
 pub const macros = @import("macros.zig");
 pub const combo = @import("combo.zig");
