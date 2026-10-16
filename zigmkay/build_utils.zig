@@ -53,7 +53,7 @@ pub fn install_tools(b: *std.Build) void {
 
     const picotool_dep = b.dependency("picotool", .{
         .target = b.graph.host,
-        .optimize = .ReleaseSafe,
+        .optimize = .ReleaseFast,
     });
     b.addNamedLazyPath("picotool", picotool_dep.artifact("picotool").getEmittedBin());
     const picotool_src = picotool_dep.builder.dependency("picotool", .{});
